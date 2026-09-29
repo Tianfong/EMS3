@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="color-scheme" content="dark light"/>
+<title>FDB NPI Command Center — Fan Manufacturing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%230ea5e9'/><circle cx='16' cy='16' r='4' fill='%230b1220'/><g fill='none' stroke='%230b1220' stroke-width='3' stroke-linecap='round'><path d='M16 12 C 20 4, 28 8, 24 14'/><path d='M20 16 C 28 20, 24 28, 18 24'/><path d='M12 16 C 4 20, 8 28, 14 24'/><path d='M16 20 C 12 28, 4 24, 8 18'/></g></svg>"/>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="30" height="30"><circle cx="16" cy="16" r="14" fill="url(#g1)"/><circle cx="16" cy="16" r="3.5" fill="#0b1220"/><g fill="none" stroke="#0b1220" stroke-width="2.6" stroke-linecap="round"><path d="M16 12.5 C 20 4, 28 8, 24 14"/><path d="M19.5 16 C 28 20, 24 28, 18 24"/><path d="M12.5 16 C 4 20, 8 28, 14 24"/><path d="M16 19.5 C 12 28, 4 24, 8 18"/></g><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#38bdf8"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs></svg>
+      </div>
+      <div class="brand-text">
+        <strong>FDB NPI</strong>
+        <span>Command Center</span>
+      </div>
+      <button class="icon-btn sidebar-close" id="sidebarClose" aria-label="Close menu">✕</button>
+    </div>
+
+    <nav class="nav" id="nav" aria-label="Primary">
+      <button class="nav-item active" data-view="overview"><span class="nav-ico">◉</span>Overview<span class="nav-badge" id="badgeAlerts">3</span></button>
+      <button class="nav-item" data-view="products"><span class="nav-ico">▤</span>Products</button>
+      <button class="nav-item" data-view="processes"><span class="nav-ico">⚙</span>Processes</button>
+      <button class="nav-item" data-view="kpi"><span class="nav-ico">📈</span>KPI Deep Dive</button>
+      <button class="nav-item" data-view="quality"><span class="nav-ico">📊</span>Quality · SPC</button>
+      <button class="nav-item" data-view="gantt"><span class="nav-ico">🗓</span>Project Gantt<span class="nav-badge amber" id="badgeAtRisk">2</span></button>
+      <button class="nav-item" data-view="faca"><span class="nav-ico">✎</span>FACA<span class="nav-badge" id="badgeFaca">4</span></button>
+      <button class="nav-item" data-view="claims"><span class="nav-ico">⚑</span>Customer Claims<span class="nav-badge" id="badgeClaims"></span></button>
+      <button class="nav-item" data-view="shipments"><span class="nav-ico">📦</span>Shipments</button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="pulse-card">
+        <div class="pulse-row"><span>NPI lines live</span><strong>4 / 4</strong></div>
+        <div class="pulse-row"><span>Open issues</span><strong class="warn">9</strong></div>
+        <div class="mini-bars" id="footBars" aria-hidden="true"></div>
+        <div class="pulse-time" id="lastSync">synced just now</div>
+      </div>
+      <div class="foot-meta">FDB · Fan Motor BU · SMT-2</div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+      <div class="crumbs">
+        <h1 id="viewTitle">Overview</h1>
+        <span class="crumb-sub" id="viewSub">New Product Introduction · real-time command view</span>
+      </div>
+
+      <div class="topbar-tools">
+        <div class="filter-chip" title="Product">
+          <span class="fc-label">Product</span>
+          <select id="productSel" class="topbar-select" aria-label="Product filter"></select>
+        </div>
+        <div class="filter-chip" title="NPI Build Stage">
+          <span class="fc-label">Stage</span>
+          <div class="seg" id="stageSeg" role="group" aria-label="Stage filter"></div>
+        </div>
+        <div class="filter-chip" title="Production lot (build configuration)">
+          <span class="fc-label">Lot</span>
+          <select id="lotSel" class="topbar-select" aria-label="Lot filter"></select>
+        </div>
+        <div class="filter-chip" title="Product Side">
+          <span class="fc-label">Side</span>
+          <div class="seg" id="sideSeg" role="group" aria-label="Side filter"></div>
+        </div>
+        <div class="filter-chip" title="Production Line">
+          <span class="fc-label">Line</span>
+          <div class="seg" id="lineSeg" role="group" aria-label="Line filter"></div>
+        </div>
+        <div class="filter-chip" title="Time Range">
+          <span class="fc-label">Range</span>
+          <div class="seg" id="rangeSeg" role="group" aria-label="Range filter"></div>
+        </div>
+        <button class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">🌙</button>
+        <button class="icon-btn" id="settingsBtn" title="Data source & settings" aria-label="Settings">⚙️</button>
+        <button class="btn-primary" id="reportBtn" title="Executive stage-gate report" style="padding:7px 13px">▤ Exec report</button>
+        <div class="avatar" title="ME — Manufacturing Engineer">ME</div>
+      </div>
+    </header>
+
+    <div class="ticker" id="ticker" role="status">
+      <span class="ticker-dot"></span>
+      <div class="ticker-track" id="tickerTrack"></div>
+    </div>
+
+    <section class="view-area" id="viewArea"><!-- views injected here --></section>
+
+    <footer class="foot">
+      <span>FDB NPI Command Center · demo data refreshes every 15s</span>
+      <span id="footClock">—</span>
+    </footer>
+  </main>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toastRoot" class="toast-root"></div>
+
+<script src="data.js"></script>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

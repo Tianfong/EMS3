@@ -1,0 +1,3075 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="color-scheme" content="dark light"/>
+<title>FDB NPI Command Center — Fan Manufacturing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet"/>
+<style>
+/* ============================================================
+   FDB NPI Command Center — Design System
+   ============================================================ */
+:root{
+  --bg:#070c16; --bg2:#0a1220; --panel:rgba(17,26,43,.72); --panel-solid:#111a2b;
+  --glass:rgba(255,255,255,.035); --line:rgba(148,163,184,.14); --line2:rgba(148,163,184,.24);
+  --txt:#e6edf7; --txt2:#94a3b8; --txt3:#64748b;
+  --acc:#38bdf8; --acc2:#2563eb; --acc-soft:rgba(56,189,248,.14);
+  --good:#34d399; --good-soft:rgba(52,211,153,.14);
+  --warn:#fbbf24; --warn-soft:rgba(251,191,36,.14);
+  --bad:#f87171; --bad-soft:rgba(248,113,113,.15);
+  --pur:#a78bfa; --pur-soft:rgba(167,139,250,.14);
+  --shadow:0 10px 30px -12px rgba(2,6,23,.7);
+  --r:16px; --r-sm:10px;
+  --sidebar-w:242px;
+  --font:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+[data-theme="light"]{
+  --bg:#eef3fa; --bg2:#e6edf6; --panel:rgba(255,255,255,.82); --panel-solid:#ffffff;
+  --glass:rgba(15,23,42,.03); --line:rgba(15,23,42,.10); --line2:rgba(15,23,42,.18);
+  --txt:#0f172a; --txt2:#475569; --txt3:#7c8aa0;
+  --acc:#0284c7; --acc2:#2563eb; --acc-soft:rgba(2,132,199,.10);
+  --good:#059669; --good-soft:rgba(5,150,105,.10);
+  --warn:#b45309; --warn-soft:rgba(180,83,9,.10);
+  --bad:#dc2626; --bad-soft:rgba(220,38,38,.10);
+  --pur:#7c3aed; --pur-soft:rgba(124,58,237,.10);
+  --shadow:0 10px 30px -14px rgba(15,23,42,.25);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font);background:var(--bg);color:var(--txt);
+  font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:-1;
+  background:
+    radial-gradient(900px 500px at 85% -10%,var(--acc-soft),transparent 60%),
+    radial-gradient(700px 500px at -10% 30%,rgba(37,99,235,.10),transparent 60%),
+    radial-gradient(700px 600px at 60% 110%,rgba(167,139,250,.08),transparent 60%),
+    var(--bg);
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
+::-webkit-scrollbar-track{background:transparent}
+::selection{background:var(--acc-soft)}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select{font-family:inherit;color:inherit}
+.mono{font-family:var(--mono)}
+
+/* ---------- layout ---------- */
+.app{display:flex;min-height:100vh}
+.main{
+  flex:1;min-width:0;display:flex;flex-direction:column;
+  margin-left:var(--sidebar-w);transition:margin .28s ease;
+}
+.view-area{flex:1;padding:18px 22px 8px;max-width:1560px;width:100%;margin:0 auto}
+
+/* ---------- sidebar ---------- */
+.sidebar{
+  position:fixed;inset:0 auto 0 0;width:var(--sidebar-w);z-index:60;
+  display:flex;flex-direction:column;gap:14px;padding:18px 14px;
+  background:var(--panel);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-right:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 4px}
+.brand-logo{display:grid;place-items:center;filter:drop-shadow(0 4px 10px rgba(56,189,248,.35))}
+.brand-text{display:flex;flex-direction:column;line-height:1.15}
+.brand-text strong{font-size:15px;letter-spacing:.3px}
+.brand-text span{font-size:10.5px;color:var(--txt3);letter-spacing:1.6px;text-transform:uppercase}
+.sidebar-close{display:none;margin-left:auto}
+.nav{display:flex;flex-direction:column;gap:3px}
+.nav-item{
+  display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+  padding:9px 12px;border-radius:11px;font-size:13.5px;font-weight:600;color:var(--txt2);
+  transition:.18s;position:relative;
+}
+.nav-item:hover{background:var(--glass);color:var(--txt)}
+.nav-item.active{background:linear-gradient(90deg,var(--acc-soft),transparent 80%);color:var(--txt)}
+.nav-item.active::before{
+  content:"";position:absolute;left:-14px;top:20%;bottom:20%;width:3px;
+  border-radius:3px;background:var(--acc);box-shadow:0 0 12px var(--acc);
+}
+.nav-ico{width:20px;text-align:center;font-size:14px;opacity:.9}
+.nav-badge{
+  margin-left:auto;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;
+  background:var(--bad-soft);color:var(--bad);
+}
+.nav-badge.amber{background:var(--warn-soft);color:var(--warn)}
+.sidebar-foot{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.pulse-card{
+  background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:12px;
+  display:flex;flex-direction:column;gap:7px;
+}
+.pulse-row{display:flex;justify-content:space-between;font-size:12px;color:var(--txt2)}
+.pulse-row strong{color:var(--txt);font-family:var(--mono)}
+.pulse-row strong.warn{color:var(--warn)}
+.mini-bars{display:flex;gap:3px;align-items:flex-end;height:26px;margin-top:2px}
+.mini-bars i{
+  flex:1;background:linear-gradient(180deg,var(--acc),var(--acc2));border-radius:2px 2px 0 0;
+  opacity:.85;transition:height .6s cubic-bezier(.2,.8,.2,1);min-width:4px;
+}
+.pulse-time{font-size:10.5px;color:var(--txt3)}
+.foot-meta{font-size:10px;color:var(--txt3);text-align:center;letter-spacing:1px;text-transform:uppercase}
+.scrim{
+  position:fixed;inset:0;background:rgba(2,6,23,.55);backdrop-filter:blur(2px);
+  z-index:55;opacity:0;pointer-events:none;transition:.25s;
+}
+.scrim.show{opacity:1;pointer-events:auto}
+
+/* ---------- topbar ---------- */
+.topbar{
+  position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:14px;
+  padding:12px 22px;border-bottom:1px solid var(--line);
+  background:var(--panel);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+}
+.crumbs{min-width:0}
+.crumbs h1{font-size:17px;font-weight:800;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crumb-sub{font-size:11.5px;color:var(--txt3);display:block;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px}
+.topbar-tools{margin-left:auto;display:flex;align-items:center;gap:10px}
+.filter-chip{
+  display:flex;align-items:center;gap:8px;padding:4px 8px 4px 10px;border-radius:12px;
+  border:1px solid var(--line);background:var(--glass);
+}
+.fc-label{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3)}
+.seg{display:flex;gap:2px;background:var(--glass);border-radius:9px;padding:2px}
+.seg button{
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:7px;color:var(--txt2);transition:.16s;
+}
+.seg button:hover{color:var(--txt)}
+.seg button.on{background:var(--acc);color:#04121f;box-shadow:0 2px 8px rgba(56,189,248,.4)}
+[data-theme="light"] .seg button.on{color:#fff}
+.icon-btn{
+  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:15px;
+  border:1px solid var(--line);background:var(--glass);transition:.16s;color:var(--txt2);
+}
+.icon-btn:hover{color:var(--txt);border-color:var(--line2);transform:translateY(-1px)}
+.menu-btn{display:none}
+.avatar{
+  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--acc),var(--acc2));color:#04121f;font-weight:800;font-size:12px;
+}
+[data-theme="light"] .avatar{color:#fff}
+
+/* ---------- ticker ---------- */
+.ticker{
+  display:flex;align-items:center;gap:10px;margin:12px 22px 0;padding:7px 14px;
+  border:1px solid var(--line);border-radius:12px;background:var(--glass);overflow:hidden;
+}
+.ticker-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--good);flex:none;
+  box-shadow:0 0 10px var(--good);animation:blink 1.6s infinite;
+}
+@keyframes blink{50%{opacity:.35}}
+.ticker-track{display:flex;gap:34px;white-space:nowrap;animation:tick 38s linear infinite;font-size:12px}
+.ticker-track b{color:var(--acc);font-family:var(--mono)}
+.ticker-track .t-up{color:var(--good)} .ticker-track .t-dn{color:var(--bad)} .ticker-track .t-wa{color:var(--warn)}
+@keyframes tick{to{transform:translateX(-50%)}}
+.ticker:hover .ticker-track{animation-play-state:paused}
+
+/* ---------- cards & grid ---------- */
+.grid{display:grid;gap:14px}
+.g-kpi{grid-template-columns:repeat(5,1fr)}
+.g-2{grid-template-columns:1fr 1fr}
+.g-3{grid-template-columns:repeat(3,1fr)}
+.g-32{grid-template-columns:2fr 1fr}
+.g-23{grid-template-columns:1fr 2fr}
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px;box-shadow:var(--shadow);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  min-width:0;position:relative;
+}
+.card-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.card-head h3{font-size:13px;font-weight:800;letter-spacing:.3px}
+.card-head .sub{font-size:11px;color:var(--txt3);margin-left:auto;display:flex;align-items:center;gap:8px}
+.pill{
+  font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.4px;
+  background:var(--glass);border:1px solid var(--line);color:var(--txt2);
+}
+.pill.good{background:var(--good-soft);color:var(--good);border-color:transparent}
+.pill.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.pill.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.pill.acc{background:var(--acc-soft);color:var(--acc);border-color:transparent}
+.pill.pur{background:var(--pur-soft);color:var(--pur);border-color:transparent}
+
+/* KPI cards */
+.kpi{overflow:hidden;cursor:pointer;transition:.2s}
+.kpi:hover{transform:translateY(-3px);border-color:var(--line2)}
+.kpi::after{
+  content:"";position:absolute;inset:0 0 auto 0;height:2.5px;
+  background:linear-gradient(90deg,var(--kc,var(--acc)),transparent);
+  opacity:.9;
+}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.kpi-ico{
+  width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-size:15px;
+  background:color-mix(in srgb,var(--kc) 14%,transparent);color:var(--kc);
+}
+.kpi-name{font-size:11px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:var(--txt3)}
+.kpi-val{font-size:27px;font-weight:800;font-family:var(--mono);letter-spacing:-.5px}
+.kpi-val small{font-size:13px;color:var(--txt3);font-weight:600}
+.kpi-foot{display:flex;align-items:center;gap:8px;margin-top:6px}
+.trend{font-size:11.5px;font-weight:700;font-family:var(--mono)}
+.trend.up{color:var(--good)} .trend.dn{color:var(--bad)} .trend.fl{color:var(--txt3)}
+.kpi-spark{margin-left:auto;width:86px;height:30px}
+.kpi-note{font-size:10.5px;color:var(--txt3)}
+
+/* tables */
+.table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:640px}
+th{
+  text-align:left;font-size:10px;letter-spacing:1.1px;text-transform:uppercase;color:var(--txt3);
+  padding:9px 12px;border-bottom:1px solid var(--line);background:var(--glass);
+  position:sticky;top:0;white-space:nowrap;cursor:pointer;user-select:none;
+}
+th:hover{color:var(--txt)}
+th .arr{font-size:9px;color:var(--acc)}
+td{padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+tbody tr{transition:.14s;cursor:pointer}
+tbody tr:hover{background:var(--glass)}
+tbody tr:last-child td{border-bottom:none}
+td.mono{font-family:var(--mono);font-size:12px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.trunc{max-width:260px;overflow:hidden;text-overflow:ellipsis}
+
+/* stage pipeline */
+.pipe{display:flex;gap:0;align-items:stretch;overflow-x:auto;padding:6px 2px}
+.pipe-stage{
+  flex:1;min-width:118px;position:relative;padding:12px 14px 12px 24px;
+  background:var(--glass);border:1px solid var(--line);border-right:none;
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%,14px 50%);
+  margin-left:-14px;cursor:pointer;transition:.18s;
+}
+.pipe-stage:first-child{margin-left:0;border-radius:10px 0 0 10px;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%);padding-left:14px}
+.pipe-stage:last-child{border-right:1px solid var(--line);border-radius:0 10px 10px 0}
+.pipe-stage:hover{transform:translateY(-2px);z-index:2}
+.pipe-stage.on{outline:2px solid var(--acc);outline-offset:-2px;z-index:1}
+.pipe-stage .ps-name{font-size:12px;font-weight:800;letter-spacing:.6px}
+.pipe-stage .ps-val{font-size:20px;font-weight:800;font-family:var(--mono);margin:2px 0}
+.pipe-stage .ps-sub{font-size:10.5px;color:var(--txt3)}
+
+/* progress bars */
+.bar{height:7px;border-radius:6px;background:var(--glass);overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .7s cubic-bezier(.2,.8,.2,1)}
+.bar i.g{background:linear-gradient(90deg,var(--good),#10b981)}
+.bar i.w{background:linear-gradient(90deg,var(--warn),#f59e0b)}
+.bar i.b{background:linear-gradient(90deg,var(--bad),#ef4444)}
+
+/* process flow */
+.flow{display:flex;align-items:center;gap:0;overflow-x:auto;padding:8px 2px}
+.flow-node{
+  flex:none;min-width:170px;background:var(--glass);border:1px solid var(--line);
+  border-radius:14px;padding:12px;cursor:pointer;transition:.18s;position:relative;
+}
+.flow-node:hover{transform:translateY(-2px);border-color:var(--line2)}
+.flow-node.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc),0 8px 22px -10px rgba(56,189,248,.5)}
+.flow-arrow{flex:none;width:34px;height:2px;background:var(--line2);position:relative;margin:0 2px}
+.flow-arrow::after{
+  content:"";position:absolute;right:-1px;top:-4px;border:5px solid transparent;border-left-color:var(--line2);
+}
+.fn-head{display:flex;align-items:center;gap:8px}
+.fn-ico{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:14px;background:var(--acc-soft)}
+.fn-name{font-size:12.5px;font-weight:800}
+.fn-sub{font-size:10.5px;color:var(--txt3)}
+.fn-kpis{display:flex;gap:12px;margin-top:8px}
+.fn-kpi{flex:1}
+.fn-kpi b{font-family:var(--mono);font-size:14px;display:block}
+.fn-kpi span{font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3)}
+
+/* gantt */
+.gantt{position:relative}
+.gantt-scroll{overflow-x:auto;overflow-y:hidden;padding-top:16px;scrollbar-width:thin}
+.gantt-inner{min-width:760px;position:relative}
+.gantt-row{display:grid;grid-template-columns:190px 1fr;gap:0;align-items:center;border-bottom:1px solid var(--line);padding:7px 0}
+.gantt-row:hover{background:var(--glass)}
+.g-label{padding:0 10px;min-width:0;position:sticky;left:0;z-index:2;background:inherit}
+.g-label b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-label span{font-size:10px;color:var(--txt3)}
+.g-track{position:relative;height:30px;min-width:0}
+.g-grid{position:absolute;inset:0;pointer-events:none}
+.g-grid i{position:absolute;top:0;bottom:0;border-left:1px dashed var(--line)}
+.g-grid i.tick-major{border-left:1px solid var(--line2)}
+.g-grid span{
+  position:absolute;top:-15px;font-size:9.5px;color:var(--txt3);transform:translateX(-50%);
+  font-family:var(--mono);white-space:nowrap;
+}
+.g-grid span.tick-major-lbl{color:var(--txt2);font-weight:700}
+/* day zoom: date + 1-char weekday stacked */
+.g-grid span.tick-date{top:-26px;transform:translateX(-50%)}
+.g-grid span.tick-dow{
+  top:-12px;transform:translateX(-50%);font-size:8.5px;color:var(--txt3);
+  font-family:var(--mono);opacity:.85;
+}
+.g-grid span.tick-wknd{color:var(--txt3);opacity:.7}
+.g-grid i.tick-wknd-line{opacity:.55}
+.g-bar{
+  position:absolute;top:5px;height:20px;border-radius:7px;cursor:pointer;
+  display:flex;align-items:center;padding:0 9px;font-size:10px;font-weight:700;color:#04121f;
+  transition:.16s;min-width:26px;box-shadow:0 3px 10px -3px rgba(2,6,23,.5);
+}
+[data-theme="light"] .g-bar{color:#fff}
+.g-bar:hover{transform:scale(1.015);filter:brightness(1.12)}
+.g-today{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--bad);z-index:3;box-shadow:0 0 8px var(--bad)}
+
+/* keep Today button visible on small screens */
+#todayBtn{white-space:nowrap}
+.g-today::after{content:"TODAY";position:absolute;top:-13px;left:-16px;font-size:8px;font-weight:800;color:var(--bad);letter-spacing:1px}
+
+/* faca / claims */
+.list{display:flex;flex-direction:column;gap:9px}
+.item{
+  display:flex;gap:12px;align-items:flex-start;padding:11px 13px;border-radius:13px;
+  background:var(--glass);border:1px solid var(--line);cursor:pointer;transition:.16s;
+}
+.item:hover{transform:translateX(3px);border-color:var(--line2)}
+.item-ico{
+  width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center;
+  font-size:14px;font-weight:800;
+}
+.item-body{min-width:0;flex:1}
+.item-title{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-sub{font-size:11px;color:var(--txt3);margin-top:2px}
+.item-meta{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+
+/* modal & toast */
+.modal-back{
+  position:fixed;inset:0;z-index:100;background:rgba(2,6,23,.6);backdrop-filter:blur(6px);
+  display:grid;place-items:center;padding:20px;animation:fade .2s;
+}
+@keyframes fade{from{opacity:0}}
+.modal{
+  width:min(720px,100%);max-height:86vh;overflow-y:auto;background:var(--panel-solid);
+  border:1px solid var(--line2);border-radius:20px;box-shadow:0 30px 80px -20px rgba(2,6,23,.8);
+  animation:pop .25s cubic-bezier(.2,.9,.3,1.2);
+}
+@keyframes pop{from{opacity:0;transform:scale(.94) translateY(10px)}}
+.modal-head{
+  display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line);
+  position:sticky;top:0;background:var(--panel-solid);z-index:2;border-radius:20px 20px 0 0;
+}
+.modal-head h2{font-size:16px;font-weight:800}
+.modal-body{padding:18px 20px}
+.modal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.stat-box{background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.stat-box span{font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);display:block}
+.stat-box b{font-family:var(--mono);font-size:18px}
+.toast-root{position:fixed;bottom:18px;right:18px;z-index:120;display:flex;flex-direction:column;gap:8px}
+.toast{
+  background:var(--panel-solid);border:1px solid var(--line2);border-left:3px solid var(--acc);
+  border-radius:12px;padding:11px 15px;font-size:12.5px;box-shadow:var(--shadow);
+  animation:slide .3s cubic-bezier(.2,.9,.3,1.1);max-width:330px;
+}
+.toast.good{border-left-color:var(--good)} .toast.warn{border-left-color:var(--warn)} .toast.bad{border-left-color:var(--bad)}
+@keyframes slide{from{opacity:0;transform:translateX(24px)}}
+
+/* section head */
+.sec-head{display:flex;align-items:center;gap:10px;margin:20px 0 12px}
+.sec-head h2{font-size:14px;font-weight:800;letter-spacing:.3px}
+.sec-head .rule{flex:1;height:1px;background:var(--line)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--txt2)}
+.legend i{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px}
+
+/* sparkline text fallback */
+.empty{padding:26px;text-align:center;color:var(--txt3);font-size:12px}
+
+/* donut */
+.donut-wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.donut{position:relative;width:150px;height:150px;flex:none}
+.donut svg{transform:rotate(-90deg)}
+.donut-c{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.donut-c b{font-size:23px;font-family:var(--mono)}
+.donut-c span{font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);display:block}
+.donut-leg{display:flex;flex-direction:column;gap:8px;flex:1;min-width:150px}
+.donut-leg .dl{display:flex;align-items:center;gap:8px;font-size:12px}
+.donut-leg .dl b{margin-left:auto;font-family:var(--mono)}
+
+/* topbar product select */
+.topbar-select{
+  background:var(--glass);border:1px solid var(--line2);border-radius:8px;
+  color:var(--txt);font-size:11.5px;font-weight:700;padding:4px 6px;max-width:200px;
+  outline:none;cursor:pointer;transition:.15s;
+}
+.topbar-select:hover{border-color:var(--acc)}
+.topbar-select:focus{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-soft)}
+.topbar-select option{background:var(--panel-solid);color:var(--txt)}
+
+/* form controls & buttons (manage layer) */
+.fld{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--txt3)}
+.fld span{font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+.fld input,.fld select,.fld textarea{
+  background:var(--glass);border:1px solid var(--line2);border-radius:9px;
+  padding:8px 10px;font-size:13px;color:var(--txt);min-width:130px;outline:none;transition:.15s;
+}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-soft)}
+.fld.grow{flex:1;min-width:180px}
+.fld.grow input{width:100%}
+.btn-primary{
+  background:linear-gradient(135deg,var(--acc),var(--acc2));color:#04121f;font-weight:800;
+  padding:9px 16px;border-radius:10px;font-size:12.5px;transition:.16s;white-space:nowrap;
+}
+[data-theme="light"] .btn-primary{color:#fff}
+.btn-primary:hover{transform:translateY(-1px);filter:brightness(1.08)}
+.mini-btn{
+  font-size:11px;font-weight:700;padding:5px 10px;border-radius:8px;
+  border:1px solid var(--line2);background:var(--glass);color:var(--txt2);transition:.15s;white-space:nowrap;
+}
+.mini-btn:hover{color:var(--txt);border-color:var(--acc);transform:translateY(-1px)}
+
+/* executive report */
+.report-table{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0}
+.report-table th{text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);padding:7px 9px;border-bottom:1px solid var(--line2);background:var(--glass)}
+.report-table td{padding:7px 9px;border-bottom:1px solid var(--line)}
+.report-list{margin:4px 0 0 18px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--txt2)}
+.report-list b{color:var(--txt)}
+
+/* print: report only */
+@media print{
+  body *{visibility:hidden}
+  .modal-back, .modal-back *{visibility:visible}
+  .modal-back{position:absolute;inset:0;background:#fff;padding:0}
+  .modal{box-shadow:none;border:none;max-height:none;width:100%}
+  .modal-head{position:static;color:#0f172a}
+  .icon-btn{display:none}
+  body::before{display:none}
+}
+
+/* responsive */
+@media (max-width:1250px){
+  .g-kpi{grid-template-columns:repeat(3,1fr)}
+  .g-3{grid-template-columns:1fr 1fr}
+  .g-32,.g-23{grid-template-columns:1fr}
+}
+@media (max-width:1080px){
+  .sidebar{transform:translateX(-104%);transition:transform .28s ease;box-shadow:0 0 60px rgba(2,6,23,.6)}
+  .sidebar.open{transform:none}
+  .sidebar-close{display:grid}
+  .main{margin-left:0}
+  .menu-btn{display:grid}
+  .filter-chip{display:none}
+  .filter-chip.keep{display:flex}
+  #reportBtn{display:none}
+  .filter-chip:has(#productSel){display:flex}
+}
+@media (max-width:760px){
+  .g-kpi{grid-template-columns:repeat(2,1fr)}
+  .g-2,.g-3{grid-template-columns:1fr}
+  .view-area{padding:14px 12px 6px}
+  .topbar{padding:10px 12px}
+  .ticker{margin:10px 12px 0}
+  .crumb-sub{display:none}
+  .toast-root{left:12px;right:12px}
+  .toast{max-width:none}
+  .kpi-val{font-size:23px}
+  .avatar{display:none}
+}
+@media (max-width:440px){
+  .g-kpi{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001s!important;transition-duration:.001s!important}
+}
+
+</style>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%230ea5e9'/><circle cx='16' cy='16' r='4' fill='%230b1220'/><g fill='none' stroke='%230b1220' stroke-width='3' stroke-linecap='round'><path d='M16 12 C 20 4, 28 8, 24 14'/><path d='M20 16 C 28 20, 24 28, 18 24'/><path d='M12 16 C 4 20, 8 28, 14 24'/><path d='M16 20 C 12 28, 4 24, 8 18'/></g></svg>"/>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="30" height="30"><circle cx="16" cy="16" r="14" fill="url(#g1)"/><circle cx="16" cy="16" r="3.5" fill="#0b1220"/><g fill="none" stroke="#0b1220" stroke-width="2.6" stroke-linecap="round"><path d="M16 12.5 C 20 4, 28 8, 24 14"/><path d="M19.5 16 C 28 20, 24 28, 18 24"/><path d="M12.5 16 C 4 20, 8 28, 14 24"/><path d="M16 19.5 C 12 28, 4 24, 8 18"/></g><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#38bdf8"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs></svg>
+      </div>
+      <div class="brand-text">
+        <strong>FDB NPI</strong>
+        <span>Command Center</span>
+      </div>
+      <button class="icon-btn sidebar-close" id="sidebarClose" aria-label="Close menu">✕</button>
+    </div>
+
+    <nav class="nav" id="nav" aria-label="Primary">
+      <button class="nav-item active" data-view="overview"><span class="nav-ico">◉</span>Overview<span class="nav-badge" id="badgeAlerts">3</span></button>
+      <button class="nav-item" data-view="products"><span class="nav-ico">▤</span>Products</button>
+      <button class="nav-item" data-view="processes"><span class="nav-ico">⚙</span>Processes</button>
+      <button class="nav-item" data-view="kpi"><span class="nav-ico">📈</span>KPI Deep Dive</button>
+      <button class="nav-item" data-view="quality"><span class="nav-ico">📊</span>Quality · SPC</button>
+      <button class="nav-item" data-view="gantt"><span class="nav-ico">🗓</span>Project Gantt<span class="nav-badge amber" id="badgeAtRisk">2</span></button>
+      <button class="nav-item" data-view="faca"><span class="nav-ico">✎</span>FACA<span class="nav-badge" id="badgeFaca">4</span></button>
+      <button class="nav-item" data-view="claims"><span class="nav-ico">⚑</span>Customer Claims<span class="nav-badge" id="badgeClaims"></span></button>
+      <button class="nav-item" data-view="shipments"><span class="nav-ico">📦</span>Shipments</button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="pulse-card">
+        <div class="pulse-row"><span>NPI lines live</span><strong>4 / 4</strong></div>
+        <div class="pulse-row"><span>Open issues</span><strong class="warn">9</strong></div>
+        <div class="mini-bars" id="footBars" aria-hidden="true"></div>
+        <div class="pulse-time" id="lastSync">synced just now</div>
+      </div>
+      <div class="foot-meta">FDB · Fan Motor BU · SMT-2</div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+      <div class="crumbs">
+        <h1 id="viewTitle">Overview</h1>
+        <span class="crumb-sub" id="viewSub">New Product Introduction · real-time command view</span>
+      </div>
+
+      <div class="topbar-tools">
+        <div class="filter-chip" title="Product">
+          <span class="fc-label">Product</span>
+          <select id="productSel" class="topbar-select" aria-label="Product filter"></select>
+        </div>
+        <div class="filter-chip" title="NPI Build Stage">
+          <span class="fc-label">Stage</span>
+          <div class="seg" id="stageSeg" role="group" aria-label="Stage filter"></div>
+        </div>
+        <div class="filter-chip" title="Production lot (build configuration)">
+          <span class="fc-label">Lot</span>
+          <select id="lotSel" class="topbar-select" aria-label="Lot filter"></select>
+        </div>
+        <div class="filter-chip" title="Product Side">
+          <span class="fc-label">Side</span>
+          <div class="seg" id="sideSeg" role="group" aria-label="Side filter"></div>
+        </div>
+        <div class="filter-chip" title="Production Line">
+          <span class="fc-label">Line</span>
+          <div class="seg" id="lineSeg" role="group" aria-label="Line filter"></div>
+        </div>
+        <div class="filter-chip" title="Time Range">
+          <span class="fc-label">Range</span>
+          <div class="seg" id="rangeSeg" role="group" aria-label="Range filter"></div>
+        </div>
+        <button class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">🌙</button>
+        <button class="icon-btn" id="settingsBtn" title="Data source & settings" aria-label="Settings">⚙️</button>
+        <button class="btn-primary" id="reportBtn" title="Executive stage-gate report" style="padding:7px 13px">▤ Exec report</button>
+        <div class="avatar" title="ME — Manufacturing Engineer">ME</div>
+      </div>
+    </header>
+
+    <div class="ticker" id="ticker" role="status">
+      <span class="ticker-dot"></span>
+      <div class="ticker-track" id="tickerTrack"></div>
+    </div>
+
+    <section class="view-area" id="viewArea"><!-- views injected here --></section>
+
+    <footer class="foot">
+      <span>FDB NPI Command Center · demo data refreshes every 15s</span>
+      <span id="footClock">—</span>
+    </footer>
+  </main>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toastRoot" class="toast-root"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   FDB NPI Command Center — mock data layer
+   Products X4151/X4152/... · RHS/LHS · Stages P1,P2,EVT,DVT,PVT
+   KPIs: FPY, FY, UPH, OEE, Shipment, Claims, FACA, Gantt
+   ============================================================ */
+
+const DB = (() => {
+
+  /* ---------- master lists ---------- */
+  const STAGES = ["P1", "P2", "EVT", "DVT", "PVT"];
+  const SIDES  = ["RHS", "LHS"];
+  const RANGES = ["7D", "30D", "QTD", "YTD"];
+  const LINES  = ["L1", "L2", "L3", "L4"];
+
+  const PROCESSES = [
+    { id:"rotor",    name:"Rotor Assembly",        ico:"🌀", target:{ fpy:97.0, uph:150, oee:82 } },
+    { id:"pillow",   name:"Pillow-Stator Assembly",ico:"🧲", target:{ fpy:96.0, uph:120, oee:80 } },
+    { id:"fan",      name:"Fan Assembly",          ico:"🔧", target:{ fpy:95.5, uph:180, oee:85 } },
+    { id:"test",     name:"Fan Test Accessory",    ico:"🧪", target:{ fpy:98.5, uph:220, oee:88 } },
+  ];
+
+  const PRODUCTS = [
+    { id:"X4151", name:"FDB 92mm · Server",      customer:"CloudCore",  stage:"DVT", side:"RHS+LHS", mule:"M4",      ramp:"2026-Q4", line:"L1", vol: { ytd: 41200, target: 45000 } },
+    { id:"X4152", name:"FDB 120mm · High-CFM",   customer:"NovaServe",  stage:"DVT", side:"RHS+LHS", mule:"M4",      ramp:"2026-Q4", line:"L1", vol: { ytd: 38600, target: 40000 } },
+    { id:"X4153", name:"FDB 80mm · Slim",        customer:"EdgeWave",   stage:"EVT", side:"RHS",     mule:"M3",      ramp:"2027-Q1", line:"L2", vol: { ytd: 12600, target: 15000 } },
+    { id:"X4154", name:"FDB 120mm · Dual",       customer:"NovaServe",  stage:"PVT", side:"RHS+LHS", mule:"M5",      ramp:"2026-Q3", line:"L3", vol: { y_data:0, ytd: 52100, target: 50000 } },
+    { id:"X4155", name:"FDB 60mm · Blade",       customer:"PicoCloud",  stage:"P1",  side:"LHS",     mule:"M1",      ramp:"2027-Q2", line:"L4", vol: { ytd: 2100,  target: 6000 } },
+    { id:"X4156", name:"FDB 97mm · Silent",      customer:"CloudCore",  stage:"P2",  side:"RHS",     mule:"M2",      ramp:"2027-Q1", line:"L4", vol: { ytd: 5400,  target: 8000 } },
+  ];
+  PRODUCTS.forEach(p => delete p.vol.y_data);
+
+  /* deterministic PRNG so refreshes are stable between reloads-ish */
+  let seed = 4151;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+  /* ---------- NPI build lots (configurations) per stage ----------
+     P1 → MP11, MP12… · P2 → MP21… · EVT → ME11, ME12…
+     DVT → MD11, MD12… · PVT → MV11, MV12…                       */
+  const LOT_PREFIX = { P1:"MP1", P2:"MP2", EVT:"ME1", DVT:"MD1", PVT:"MV1" };
+  const LOTS = [];
+  STAGES.forEach(st => {
+    const n = { P1:2, P2:2, EVT:3, DVT:3, PVT:2 }[st];
+    for (let i = 1; i <= n; i++){
+      LOTS.push({
+        id: LOT_PREFIX[st] + i,                 // MP11, MP12 · ME11 · MD11…
+        stage: st,
+        units: Math.round(80 + i*60 + (st.length*37) % 90),
+      });
+    }
+  });
+  /* product → lots currently running (within the product's stage) */
+  const PRODUCT_LOTS = {};
+  {
+    let li = 0;
+    PRODUCTS.forEach(p => {
+      const inStage = LOTS.filter(l => l.stage === p.stage);
+      const take = Math.max(1, Math.min(2, inStage.length));
+      const start = li % Math.max(1, inStage.length - take + 1);
+      PRODUCT_LOTS[p.id] = inStage.slice(start, start + take).map(l => l.id);
+      li++;
+    });
+    // guarantee at least one lot per product
+    PRODUCTS.forEach(p => { if (!PRODUCT_LOTS[p.id] || !PRODUCT_LOTS[p.id].length) PRODUCT_LOTS[p.id] = [LOTS.find(l=>l.stage===p.stage).id]; });
+  }
+
+  /* ---------- per-lot KPI snapshot ---------- */
+  const LOT_KPI = {};
+  {
+    const lotSeeds = { P1: 4113, P2: 4121, EVT: 8837, DVT: 8839, PVT: 10037 };
+    LOTS.forEach((l, i) => {
+      seed = lotSeeds[l.stage] + i * 1013;
+      const sb = { P1:-3.4, P2:-2.1, EVT:-1.4, DVT:-0.6, PVT:0 }[l.stage];
+      LOT_KPI[l.id] = {
+        fpy: +clamp(96.4 + sb + (rnd()-0.5)*2.6, 86, 99.7).toFixed(1),
+        fy:  +clamp(98.2 + sb*0.5 + (rnd()-0.5)*1.4, 92, 99.9).toFixed(1),
+        uph: Math.round(clamp(150 + sb*7 + (rnd()-0.5)*40, 95, 200)),
+        oee: +clamp(80 + sb + (rnd()-0.5)*9, 62, 93).toFixed(1),
+      };
+    });
+  }
+
+  /* ---------- lot task flow (per-lot build lifecycle) ----------
+     Preparation → MBO and Main build → OQC → OK2S → Shipment
+     (schedules generated after TODAY is defined — see below)        */
+  const LOT_PHASES = ["Preparation", "MBO and Main build", "OQC", "OK2S", "Shipment"];
+
+  /* ---------- KPI definitions ---------- */
+  const KPIS = [
+    { id:"fpy",   name:"FPY",  full:"First Pass Yield",      unit:"%",  target:96.5, good:"up",  ico:"✅", note:"rotor → test, blended" },
+    { id:"fy",    name:"FY",   full:"Final Yield",           unit:"%",  target:98.5, good:"up",  ico:"🏁", note:"incl. rework recovery" },
+    {
+      id:"uph",   name:"UPH",  full:"Units Per Hour",        unit:"",   target:160,  good:"up",  ico:"⚡", note:"line-rated, blended",
+      base: 148, spread: 14,
+    },
+    {
+      id:"oee",   name:"OEE",  full:"Overall Equipment Effectiveness", unit:"%", target:82, good:"up", ico:"🏭", note:"A × P × Q",
+      base: 78.5, spread: 6,
+    },
+    { id:"ship",  name:"SHIP", full:"Shipment Achievement",  unit:"%",  target:100,  good:"up",  ico:"📦", note:"commit vs actual" },
+    { id:"claim", name:"CLAIM",full:"Customer Claims",       unit:"",   target:0,    good:"down",ico:"⚑",  note:"open claims this quarter" },
+    { id:"faca",  name:"FACA", full:"FACA Actions",          unit:"",   target:0,    good:"down",ico:"✎",  note:"open FACA actions" },
+  ];
+
+  /* ---------- deterministic series generator ---------- */
+  function series(n, base, spread, drift=0, floor=null, ceil=null){
+    const out = [];
+    let v = base;
+    for (let i=0;i<n;i++){
+      v += (rnd()-0.5)*spread + drift;
+      if (floor!==null) v = Math.max(floor, v);
+      if (ceil !==null) v = Math.min(ceil, v);
+      out.push(v);
+    }
+    return out;
+  }
+
+  const N = 42; // days of history
+  const KPI_SERIES = {};
+  KPIS.forEach(k => {
+    if (k.id === "fpy")   KPI_SERIES.fpy   = series(N, 96.2, 1.1, 0.012, 93.2, 99.1);
+    if (k.id === "fy")    KPI_SERIES.fy    = series(N, 98.3, 0.7, 0.006, 96.4, 99.9);
+    if (k.id === "uph")   KPI_SERIES.uph   = series(N, k.base, k.spread, 0.05, 118, 182);
+    if (k.id === "oee")   KPI_SERIES.oee   = series(N, k.base, k.spread, 0.02, 68, 91);
+    if (k.id === "ship")  KPI_SERIES.ship  = series(N, 97.5, 4.5, 0.01, 86, 100);
+    if (k.id === "claim") KPI_SERIES.claim = series(N, 4, 1.6, -0.01, 1, 9).map(Math.round);
+    if (k.id === "faca")  KPI_SERIES.faca  = series(N, 5, 1.4, -0.01, 2, 9).map(Math.round);
+  });
+
+  /* ---------- per-product KPI snapshot ---------- */
+  const PRODUCT_KPI = {};
+  PRODUCTS.forEach(p => {
+    seed = p.id.slice(1) * 97 + 13; // per-product seed
+    const stageBoost = { P1:-3.2, P2:-1.8, EVT:-1.2, DVT:-0.4, PVT:0 }[p.stage];
+    PRODUCT_KPI[p.id] = {
+      fpy:   clamp(96.4 + stageBoost + (rnd()-0.5)*2.2, 86, 99.6),
+      fy:    clamp(98.2 + stageBoost*0.5 + (rnd()-0.5)*1.2, 92, 99.9),
+      uph:   Math.round(clamp(150 + stageBoost*6 + (rnd()-0.5)*36, 92, 195)),
+      oee:   clamp(80 + stageBoost + (rnd()-0.5)*8, 63, 92),
+      ship:  clamp(97 + (rnd()-0.5)*8, 84, 100),
+      claim: Math.round(rnd()*3.4),
+      faca:  Math.round(rnd()*3.4),
+    };
+    PRODUCT_KPI[p.id].fpys = series(28, PRODUCT_KPI[p.id].fpy, 1.3, 0.01, 84, 99.6);
+  });
+
+  /* ---------- per-process KPI snapshot (x stage) ---------- */
+  const PROCESS_KPI = {};
+  PROCESSES.forEach(pr => {
+    seed = pr.id.length * 917 + 31;
+    PROCESS_KPI[pr.id] = {};
+    STAGES.forEach(st => {
+      const sb = { P1:-3.4, P2:-2.1, EVT:-1.4, DVT:-0.6, PVT:0 }[st];
+      PROCESS_KPI[pr.id][st] = {
+        fpy: clamp(pr.target.fpy + sb + (rnd()-0.5)*2.4, 84, 99.8),
+        uph: Math.round(clamp(pr.target.uph + sb*4 + (rnd()-0.5)*26, 60, 235)),
+        oee: clamp(pr.target.oee + sb + (rnd()-0.5)*7, 62, 94),
+      };
+    });
+  });
+
+  /* ---------- per-line KPI snapshot (line health comparison) ---------- */
+  const LINE_KPI = {};
+  LINES.forEach((ln, i) => {
+    seed = 60650 + i * 5381;
+    LINE_KPI[ln] = {
+      fpy:  +clamp(96.3 + (rnd()-0.5)*1.8, 93.5, 98.2).toFixed(1),
+      uph:  Math.round(clamp(150 + (rnd()-0.5)*30, 118, 182)),
+      oee:  +clamp(80 + (rnd()-0.5)*9, 70, 89).toFixed(1),
+      ship: +clamp(97.5 + (rnd()-0.5)*5, 88, 100).toFixed(1),
+    };
+  });
+
+  /* ---------- side split (RHS / LHS) ---------- */
+  const SIDE_KPI = {};
+  {
+    const seeds = { RHS: 5501, LHS: 9377 };
+    SIDES.forEach((s, i) => {
+      seed = seeds[s] + i * 4211;
+      SIDE_KPI[s] = {
+        fpy:  +clamp(96.1 + (rnd()-0.5)*1.6, 94, 98).toFixed(1),
+        uph:  Math.round(clamp(146 + (rnd()-0.5)*22, 120, 180)),
+        oee:  +clamp(79.5 + (rnd()-0.5)*7, 72, 88).toFixed(1),
+      };
+    });
+  }
+
+  /* ---------- shipments (weekly commit vs actual) ---------- */
+  const SHIPMENTS = [];
+  {
+    seed = 991;
+    const weeks = 10;
+    for (let i=0;i<weeks;i++){
+      const commit = 8000 + Math.round(rnd()*10)*250;
+      const achieved = Math.round(commit * (0.90 + rnd()*0.13));
+      SHIPMENTS.push({ week:`W${i+1}`, commit, actual: Math.min(achieved, commit + 300) });
+    }
+  }
+
+  /* ---------- customer claims ---------- */
+  const CLAIMS = [
+    { id:"CL-2213", product:"X4152", side:"RHS", customer:"NovaServe",  severity:"Critical", status:"Containment", opened:"2026-09-18",
+      issue:"Bearing noise > 32 dB(A) at 3,800 RPM on 0.4% of sample", qty:184, owner:"J. Tan",   eta:"2026-10-02", rma:"8A",
+      containment:"Sort + 100% acoustic re-check at FAI-3; quarantine lot L0918.", root:"under investigation", ca:"—", pa:"—" },
+    { id:"CL-2208", product:"X4151", side:"LHS", customer:"CloudCore",  severity:"Major",    status:"Root Cause",  opened:"2026-09-11",
+      issue:"Hub set-screw torque drift out of 4.5–5.5 kgf·cm window",          qty:96,  owner:"M. Okafor",eta:"2026-09-30", rma:"2B",
+      containment:"Torque audit 3×/shift; witness-mark all screws.",            root:"DC bit wear beyond PM interval", ca:"Bit PM interval 24h → 12h", pa:"Poka-yoke torque tool interlock (Nov)" },
+    { id:"CL-2196", product:"X4154", side:"RHS", customer:"NovaServe",  severity:"Minor",    status:"Verified",    opened:"2026-08-29",
+      issue:"Label print smudge on 2 lots — cosmetic only",                     qty:41,  owner:"R. Silva", eta:"2026-09-26", rma:"0A",
+      containment:"Supplier label stock lot quarantined.",                      root:"Low-tack ribbon batch", ca:"Supplier ribbon spec updated", pa:"Incoming label ADP test weekly" },
+    { id:"CL-2189", product:"X4153", side:"RHS", customer:"EdgeWave",   severity:"Major",    status:"Monitoring",  opened:"2026-08-21",
+      issue:"Intermittent tach signal dropout during burn-in",                  qty:57,  owner:"K. Ito",   eta:"2026-10-05", rma:"1C",
+      containment:"Add burn-in tach sniff test; hold-and-check 24h.",           root:"FPC connector crimp height", ca:"Crimper re-qualified", pa:"Crimp height SPC chart live at station" },
+  ];
+
+  /* ---------- FACA actions ---------- */
+  const FACA = [
+    { id:"FA-104", title:"Rotor OD variance 8µ beyond control plan",      product:"X4152", stage:"DVT", process:"rotor",  owner:"J. Tan",    due:"2026-10-01", status:"Open",       progress:55,  ico:"🌀" },
+    { id:"FA-101", title:"Pillow-stator press-fit force window widening", product:"X4154", stage:"PVT", process:"pillow", owner:"A. Roy",    due:"2026-09-27", status:"Overdue",    progress:80,  ico:"🧲" },
+    { id:"FA-097", title:"Fan screwdriver star-sequence automation",      product:"X4151", stage:"DVT", process:"fan",    owner:"M. Okafor", due:"2026-10-08", status:"In Review",  progress:90,  ico:"🔧" },
+    { id:"FA-092", title:"EOL test accessory fixture re-design (v3)",     product:"X4153", stage:"EVT", process:"test",   owner:"K. Ito",    due:"2026-10-12", status:"Open",       progress:35,  ico:"🧪" },
+    { id:"FA-088", title:"Upstream packaging ESD audit follow-up",        product:"X4156", stage:"P2",  process:"fan",    owner:"R. Silva",  due:"2026-09-25", status:"Overdue",    progress:65,  ico:"⚡" },
+  ];
+
+  /* ---------- projects / Gantt ---------- */
+  const TODAY = new Date(2026, 8, 24); // Sep 24 2026
+  const d2s = d => d.toISOString().slice(0,10);
+  const addD = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+
+  const PROJECTS = [
+    { id:"PRJ-X4155", name:"X4155 · 60mm Blade NPI",            product:"X4155", health:"green", owner:"A. Roy",
+      tasks:[
+        { name:"P1 Feasibility",            start:-70, end:-40, done:100, stage:"P1"  },
+        { name:"P2 Design finalize",        start:-48, end:-14, done:100, stage:"P2"  },
+        { name:"EVT build 1–2",             start:-20, end:6,   done:72,  stage:"EVT" },
+        { name:"EVT exit review",           start:6,   end:12,  done:0,   stage:"EVT" },
+        { name:"DVT build & validation",    start:14,  end:52,  done:0,   stage:"DVT" },
+        { name:"PVT & ramp readiness",      start:54,  end:88,  done:0,   stage:"PVT" },
+      ]},
+    { id:"PRJ-X4156", name:"X4156 · 97mm Silent NPI",           product:"X4156", health:"amber", owner:"R. Silva",
+      tasks:[
+        { name:"P2 Design finalize",        start:-60, end:-24, done:100, stage:"P2"  },
+        { name:"EVT builds",                start:-30, end:-2,  done:100, stage:"EVT" },
+        { name:"DVT build 1",               start:-4,  end:30,  done:44,  stage:"DVT" },
+        { name:"DVT reliability (1,000h)",  start:12,  end:58,  done:18,  stage:"DVT" },
+        { name:"PVT pilot run",             start:60,  end:92,  done:0,   stage:"PVT" },
+      ]},
+    { id:"PRJ-X4153", name:"X4153 · 80mm Slim EVT→DVT",         product:"X4153", health:"green", owner:"K. Ito",
+      tasks:[
+        { name:"EVT closure actions",       start:-30, end:-6,  done:100, stage:"EVT" },
+        { name:"DVT build 1–2",             start:-8,  end:26,  done:61,  stage:"DVT" },
+        { name:"DVT exit gate",             start:26,  end:32,  done:0,   stage:"DVT" },
+        { name:"PVT build",                 start:34,  end:64,  done:0,   stage:"PVT" },
+        { name:"Mass-ramp preparation",     start:64,  end:96,  done:0,   stage:"PVT" },
+      ]},
+    { id:"PRJ-X4152", name:"X4152 · 120mm High-CFM ramp",       product:"X4152", health:"amber", owner:"J. Tan",
+      tasks:[
+        { name:"DVT residual validation",   start:-40, end:-10, done:100, stage:"DVT" },
+        { name:"PVT pilot",                 start:-14, end:10,  done:82,  stage:"PVT" },
+        { name:"Acoustic containment (CL-2213)", start:-6, end:14, done:55, stage:"PVT", flag:"claim" },
+        { name:"Ramp-to-mp transition",     start:12,  end:46,  done:0,   stage:"PVT" },
+      ]},
+    { id:"PRJ-X4154", name:"X4154 · 120mm Dual MP sustain",     product:"X4154", health:"green", owner:"M. Okafor",
+      tasks:[
+        { name:"PVT pilot",                 start:-58, end:-30, done:100, stage:"PVT" },
+        { name:"MP ramp",                   start:-30, end:-2,  done:100, stage:"PVT" },
+        { name:"Yield improvement sprint",  start:-8,  end:22,  done:47,  stage:"PVT" },
+        { name:"Cost-down phase 1",         start:16,  end:60,  done:0,   stage:"PVT" },
+      ]},
+    { id:"PRJ-X4151", name:"X4151 · 92mm Server MP",            product:"X4151", health:"green", owner:"A. Roy",
+      tasks:[
+        { name:"PVT pilot",                 start:-70, end:-40, done:100, stage:"PVT" },
+        { name:"MP ramp",                   start:-40, end:-6,  done:100, stage:"PVT" },
+        { name:"Quarterly QBR actions",     start:-10, end:18,  done:33,  stage:"PVT" },
+      ]},
+  ];
+  // normalize project dates to real Date objects
+  PROJECTS.forEach(p => p.tasks.forEach(t => {
+    t.s = iso(addD(TODAY, t.start));
+    t.e = iso(addD(TODAY, t.end));
+    t.done = t.done ?? 0;
+  }));
+
+  /* ---------- per-lot phase schedules ---------- */
+  const LOT_TASKS = {};
+  LOTS.forEach((l, i) => {
+    /* stages run earlier → later; lots inside a stage are staggered */
+    const stageOrder = { P1: -46, P2: -38, EVT: -30, DVT: -22, PVT: -14 };
+    const base = stageOrder[l.stage] + (i % 3) * 4;          // stagger lots in same stage
+    const span = 6 + (i % 3) * 2;                            // phase duration
+    /* progress scales with how far the stage window has elapsed */
+    const el = (0 - base) / (span * 5 + 6);                  // 0..~1 by today
+    const prog = Math.max(0, Math.min(1, el + ((i * 7) % 5) * 0.04));
+    LOT_TASKS[l.id] = LOT_PHASES.map((name, ph) => {
+      const s = base + ph * span;
+      const done = Math.round(Math.max(0, Math.min(1, prog * LOT_PHASES.length - ph)) * 100);
+      return { name, stage: l.stage, s: iso(addD(TODAY, s)), e: iso(addD(TODAY, s + span - 1)), done };
+    });
+  });
+
+  /* ---------- stage pipeline summary (units through stages) ---------- */
+  const PIPELINE = STAGES.map((st, i) => {
+    seed = 104729 + i * 7919; // unique per stage (stage-name lengths collide)
+    const units = Math.round(400 + rnd()*3600);
+    const fpy = clamp(93.5 + rnd()*4.4, 92, 98);
+    return { stage:st, units, fpy:+fpy.toFixed(1) };
+  });
+
+  /* ---------- alerts feed ---------- */
+  const ALERTS = [
+    { sev:"bad",  txt:"X4152 RHS FPY dipped 2.1σ below DVT control limit at Fan Assembly" },
+    { sev:"warn", txt:"FA-101 FACA overdue — Pillow-stator press-fit window (X4154 PVT)" },
+    { sev:"bad",  txt:"CL-2213 Critical claim open — NovaServe containment due Oct 2" },
+    { sev:"warn", txt:"X4155 P1 UPH 38% below line-rate target — tooling pilot" },
+    { sev:"good", txt:"X4154 PVT shipment achievement 99.6% — 3 weeks running" },
+    { sev:"warn", txt:"Fan Test Accessory fixture v3 re-design slipping 4 days (X4153 EVT)" },
+  ];
+
+  /* ---------- quality analytics: defects + SPC ---------- */
+  const DEFECTS = [
+    { code:"D01", name:"Bearing noise >32dB",      process:"test",   product:"X4152", qty:86,  sev:"Critical" },
+    { code:"D02", name:"Hub torque drift",         process:"fan",    product:"X4151", qty:64,  sev:"Major" },
+    { code:"D03", name:"Rotor OD variance",        process:"rotor",  product:"X4152", qty:57,  sev:"Major" },
+    { code:"D04", name:"Press-fit force OOS",      process:"pillow", product:"X4154", qty:41,  sev:"Major" },
+    { code:"D05", name:"Tach signal dropout",      process:"test",   product:"X4153", qty:33,  sev:"Major" },
+    { code:"D06", name:"Cosmetic label smudge",    process:"test",   product:"X4154", qty:28,  sev:"Minor" },
+    { code:"D07", name:"Lead-wire scar",           process:"fan",    product:"X4151", qty:22,  sev:"Minor" },
+    { code:"D08", name:"Stator lamination burr",   process:"pillow", product:"X4156", qty:15,  sev:"Minor" },
+  ];
+
+  /* control-chart stats: X-chart for daily FPY samples */
+  function spcStats(series, target){
+    const n = series.length;
+    const cl = series.reduce((a,b)=>a+b,0)/n;
+    const sd = Math.sqrt(series.reduce((s,v)=>s+(v-cl)*(v-cl),0)/Math.max(1,n-1));
+    return { cl, sd, ucl: cl + 3*sd, lcl: Math.max(0, cl - 3*sd), target };
+  }
+
+  /* Western Electric rules — earlier sensitivity than the ±3σ rule alone.
+     Returns map: index -> ["R1","R3",…]. */
+  function westernElectric(series, st){
+    const { cl, sd, ucl, lcl } = st;
+    const z = series.map(v => sd ? (v - cl)/sd : 0);
+    const hits = {};
+    const add = (i, r) => { (hits[i] = hits[i] || []).push(r); };
+    const above = z.map(v => v > 0), below = z.map(v => v < 0);
+    for (let i = 0; i < series.length; i++){
+      // R1: beyond 3σ (kept for completeness — chart already rings these)
+      if (series[i] > ucl || series[i] < lcl) add(i, "R1");
+      // R2: 2 of 3 consecutive beyond 2σ, same side
+      for (const side of [1, -1]){
+        const win = [i-2, i-1, i].filter(j => j >= 0);
+        if (win.length === 3){
+          const cnt = win.filter(j => side*z[j] > 2).length;
+          const mid = win[1];
+          if (cnt >= 2 && side*z[mid] > 2) add(i, "R2");
+        }
+      }
+      // R3: 4 of 5 consecutive beyond 1σ, same side
+      for (const side of [1, -1]){
+        const win = [i-4, i-3, i-2, i-1, i].filter(j => j >= 0);
+        if (win.length === 5){
+          const cnt = win.filter(j => side*z[j] > 1).length;
+          if (cnt >= 4 && side*z[i] > 1) add(i, "R3");
+        }
+      }
+      // R4: 8 consecutive on one side of CL
+      if (i >= 7){
+        const win = z.slice(i-7, i+1);
+        if (win.every(v => v > 0) || win.every(v => v < 0)) add(i, "R4");
+      }
+    }
+    return hits;
+  }
+  function spcSamples(){
+    const n = 30;
+    const labels = labelsForSeries(n);
+    const prods = PRODUCTS.filter(p => STATE.product==="ALL" || p.id===STATE.product);
+    const stages = STAGES.filter(s => STATE.stage==="ALL" || s===STATE.stage);
+    const data = [];
+    for (let i=0;i<n;i++){
+      let v = 96.4 + (i/n)*0.35;                 // gentle improving drift
+      v += Math.sin(i/3.1)*0.32;                 // natural variation
+      // inject realistic special-cause events
+      if (i===7)  v -= 1.9;                      // X4152 acoustic event
+      if (i===16) v -= 1.2;                      // torque drift week
+      if (i===23) v -= 2.4;                      // press-fit OOS spike
+      if (i===28) v += 0.7;
+      const pb = prods.length ? prods.reduce((s,p)=>s+({P1:-3.2,P2:-1.8,EVT:-1.2,DVT:-0.4,PVT:0}[p.stage]||0),0)/prods.length : 0;
+      data.push(+(v + pb).toFixed(2));
+    }
+    return { labels, data, stages };
+  }
+  function labelsForSeries(n){
+    const out = [];
+    for (let i = n-1; i >= 0; i--){
+      const d = new Date(TODAY); d.setDate(d.getDate()-i);
+      out.push(`${d.getMonth()+1}/${d.getDate()}`);
+    }
+    return out;
+  }
+
+  /* ---------- persistence (manage layer: edits survive reload) ---------- */
+  const LS_KEY = "fdb-overrides-v1";
+  const overrides = (() => {
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch(e){ return {}; }
+  })();
+
+  /* baseline snapshots for clean reset (deep copies of seed data) */
+  const BASELINE = {
+    claims: JSON.parse(JSON.stringify(CLAIMS)),
+    faca:   JSON.parse(JSON.stringify(FACA)),
+    projects: JSON.parse(JSON.stringify(PROJECTS.map(p => ({ id:p.id, tasks:p.tasks })))),
+    lotTasks: JSON.parse(JSON.stringify(LOT_TASKS)),
+  };
+
+  (function applyOverrides(){
+    (overrides.claims || []).forEach(o => { const c = CLAIMS.find(x=>x.id===o.id); if (c) Object.assign(c, o); });
+    (overrides.claimsAdd || []).forEach(c => { if (!CLAIMS.find(x=>x.id===c.id)) CLAIMS.push(c); });
+    (overrides.faca || []).forEach(o => { const f = FACA.find(x=>x.id===o.id); if (f) Object.assign(f, o); });
+    (overrides.projects || []).forEach(o => {
+      const p = PROJECTS.find(x=>x.id===o.id);
+      if (p && Array.isArray(o.tasks)) p.tasks = o.tasks.map(t => ({ ...t }));
+    });
+    (overrides.lotTasks || []).forEach(o => {
+      if (LOT_TASKS[o.id] && Array.isArray(o.phases)) LOT_TASKS[o.id] = o.phases.map(t => ({ ...t }));
+    });
+  })();
+
+  function saveOverrides(){ try { localStorage.setItem(LS_KEY, JSON.stringify(overrides)); } catch(e){} }
+
+  function mergeOverride(listName, id, patch){
+    overrides[listName] = overrides[listName] || [];
+    let o = overrides[listName].find(x=>x.id===id);
+    if (!o){ o = { id }; overrides[listName].push(o); }
+    Object.assign(o, patch);
+    saveOverrides();
+  }
+  function updateClaim(id, patch){
+    const c = CLAIMS.find(x=>x.id===id); if (!c) return false;
+    Object.assign(c, patch); mergeOverride("claims", id, patch); return true;
+  }
+  function addClaim(claim){
+    CLAIMS.push(claim);
+    overrides.claimsAdd = overrides.claimsAdd || [];
+    overrides.claimsAdd.push(claim);
+    saveOverrides(); return claim;
+  }
+  function updateFaca(id, patch){
+    const f = FACA.find(x=>x.id===id); if (!f) return false;
+    Object.assign(f, patch); mergeOverride("faca", id, patch); return true;
+  }
+  function updateProjectTasks(prjId, tasks){
+    const p = PROJECTS.find(x=>x.id===prjId); if (!p) return false;
+    p.tasks = tasks.map(t => ({ ...t }));
+    mergeOverride("projects", prjId, { tasks: p.tasks });
+    return true;
+  }
+  function updateLotTasks(lotId, phases){
+    if (!LOT_TASKS[lotId]) return false;
+    LOT_TASKS[lotId] = phases.map(t => ({ ...t }));
+    mergeOverride("lotTasks", lotId, { phases: LOT_TASKS[lotId] });
+    return true;
+  }
+  function resetOverrides(){
+    CLAIMS.length = 0; BASELINE.claims.forEach(c => CLAIMS.push({ ...c }));
+    FACA.length = 0;   BASELINE.faca.forEach(f => FACA.push({ ...f }));
+    PROJECTS.forEach(p => {
+      const b = BASELINE.projects.find(x=>x.id===p.id);
+      if (b) p.tasks = b.tasks.map(t => ({ ...t }));
+    });
+    Object.keys(LOT_TASKS).forEach(id => {
+      const b = BASELINE.lotTasks[id];
+      if (b) LOT_TASKS[id] = b.map(t => ({ ...t }));
+    });
+    Object.keys(overrides).forEach(k => delete overrides[k]);
+    saveOverrides();
+  }
+
+  /* ---------- dynamic alert feed (derived, always current) ---------- */
+  const SYSTEM_ALERTS = [
+    { sev:"bad",  txt:"X4152 RHS FPY dipped 2.1σ below DVT control limit at Fan Assembly" },
+    { sev:"warn", txt:"X4155 P1 UPH 38% below line-rate target — tooling pilot" },
+    { sev:"good", txt:"X4154 PVT shipment achievement 99.6% — 3 weeks running" },
+    { sev:"warn", txt:"Fan Test Accessory fixture v3 re-design slipping 4 days (X4153 EVT)" },
+  ];
+  function dynamicAlerts(){
+    const out = [];
+    const todayIso = iso(TODAY);
+    CLAIMS.forEach(c => {
+      if (c.severity === "Critical") out.push({ sev:"bad",  txt:`${c.id} Critical claim open — ${c.customer} containment due ${c.eta}` });
+      else if (c.status === "Containment") out.push({ sev:"warn", txt:`${c.id} ${c.severity} claim in containment — ${c.customer}, ETA ${c.eta}` });
+    });
+    FACA.forEach(f => {
+      if (f.status === "Overdue") out.push({ sev:"warn", txt:`${f.id} FACA overdue — ${f.title} (${f.product} ${f.stage})` });
+    });
+    PROJECTS.forEach(p => p.tasks.forEach(t => {
+      if (t.done < 100 && t.e && t.e < todayIso) out.push({ sev:"bad", txt:`${p.product} task overdue: ${t.name} (ended ${t.e} at ${t.done}%)` });
+    }));
+    return out;
+  }
+  function allAlerts(){ return dynamicAlerts().concat(SYSTEM_ALERTS); }
+
+  /* ---------- public API ---------- */
+  return {
+    STAGES, SIDES, RANGES, LINES, LOTS, PRODUCT_LOTS, LOT_KPI, LOT_PHASES, LOT_TASKS,
+    PROCESSES, PRODUCTS, KPIS, KPI_SERIES,
+    PRODUCT_KPI, PROCESS_KPI, SIDE_KPI, LINE_KPI, SHIPMENTS, CLAIMS, FACA,
+    PROJECTS, PIPELINE, ALERTS, TODAY,
+    updateClaim, addClaim, updateFaca, updateProjectTasks, updateLotTasks, resetOverrides, LS_KEY,
+    allAlerts, DEFECTS, spcStats, spcSamples, westernElectric,
+    fmtW: n => n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/,"") + "k" : String(n),
+  };
+})();
+
+</script>
+<script>
+"use strict";
+/* Dependency-free SVG chart helpers */
+
+const CHARTS = (() => {
+  const fmt = DB.fmtW;
+
+  function fmtY(v, f){
+    if (f) return f(v);
+    return Math.abs(v) >= 1000 ? fmt(v) : (Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(1));
+  }
+
+  /* line/area chart with hover crosshair */
+  function lineChart(el, opts){
+    const pts = opts.data;
+    const W = 720, H = 240, padL = 40, padR = 14, padT = 16, padB = 26;
+    const iw = W - padL - padR, ih = H - padT - padB;
+    const min = Math.min(...pts), max = Math.max(...pts);
+    const range = (max - min) || 1;
+    const lo = min - range*0.15, hi = max + range*0.15;
+    const X = i => padL + i*iw/(pts.length-1);
+    const Y = v => padT + (1 - (v-lo)/(hi-lo))*ih;
+
+    const css = getComputedStyle(document.documentElement);
+    const acc  = css.getPropertyValue("--acc").trim()  || "#38bdf8";
+    const txt3 = css.getPropertyValue("--txt3").trim() || "#64748b";
+
+    const toPts = pts.map((v,i)=>[X(i), Y(v)]);
+    const d = "M" + toPts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
+    const areaD = `M${X(0).toFixed(1)},${(padT+ih).toFixed(1)} `
+      + toPts.map(p=>`L${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ")
+      + ` L${X(pts.length-1).toFixed(1)},${(padT+ih).toFixed(1)} Z`;
+
+    const gid = "grad" + Math.random().toString(36).slice(2,8);
+    let gridLines = "", yLabels = "";
+    for (let g=0; g<=3; g++){
+      const v = lo + (hi-lo)*g/3;
+      const y = Y(v);
+      gridLines += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--line)" stroke-dasharray="3 5"/>`;
+      yLabels  += `<text x="${padL-7}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9" fill="${txt3}" class="mono">${fmtY(v, opts.fmt)}</text>`;
+    }
+    let xLabels = "";
+    const step = Math.max(1, Math.ceil(pts.length/8));
+    pts.forEach((v,i) => {
+      if (i % step) return;
+      xLabels += `<text x="${X(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="${txt3}" class="mono">${opts.labels[i] ?? i}</text>`;
+    });
+
+    el.innerHTML = `
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+        <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="${acc}" stop-opacity=".30"/>
+          <stop offset="1" stop-color="${acc}" stop-opacity="0"/>
+        </linearGradient></defs>
+        ${gridLines}${yLabels}${xLabels}
+        <path d="${areaD}" fill="url(#${gid})"/>
+        <path d="${d}" fill="none" stroke="${acc}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+        ${opts.target != null ? `<line x1="${padL}" x2="${W-padR}" y1="${Y(opts.target)}" y2="${Y(opts.target)}" stroke="var(--good)" stroke-dasharray="6 4" stroke-width="1.4" opacity=".8"/><text x="${W-padR}" y="${Y(opts.target)-5}" text-anchor="end" font-size="9" fill="var(--good)" class="mono">target ${opts.target}</text>` : ""}
+        <circle class="hd" r="4.5" fill="${acc}" stroke="var(--panel-solid)" stroke-width="2" opacity="0"/>
+        <line class="hl" y1="${padT}" y2="${padT+ih}" stroke="var(--txt3)" stroke-dasharray="3 4" opacity="0"/>
+        <rect class="hr" x="${padL}" y="${padT}" width="${iw}" height="${ih}" fill="transparent"/>
+      </svg>`;
+
+    const svg = el.querySelector("svg");
+    const dot = el.querySelector(".hd"), hline = el.querySelector(".hl"), hit = el.querySelector(".hr");
+    hit.onmousemove = e => {
+      const r = svg.getBoundingClientRect();
+      const x = (e.clientX - r.left)/r.width*W;
+      const i = Math.max(0, Math.min(pts.length-1, Math.round((x-padL)/(iw/(pts.length-1)))));
+      dot.setAttribute("cx", X(i)); dot.setAttribute("cy", Y(pts[i])); dot.setAttribute("opacity","1");
+      hline.setAttribute("x1", X(i)); hline.setAttribute("x2", X(i)); hline.setAttribute("opacity",".6");
+      if (opts.onHover) opts.onHover(i);
+    };
+    hit.onmouseleave = () => { dot.setAttribute("opacity","0"); hline.setAttribute("opacity","0"); if (opts.onOut) opts.onOut(); };
+  }
+
+  function spark(el, data, color){
+    const W=90,H=30,pad=2.5;
+    const min=Math.min(...data), max=Math.max(...data), range=(max-min)||1;
+    const pts = data.map((v,i)=>[pad+i*(W-2*pad)/(data.length-1), H-pad-(v-min)/range*(H-2*pad)]);
+    const d = "M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:100%;display:block">
+      <path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="2.4" fill="${color}"/>
+    </svg>`;
+  }
+
+  function donut(el, segs, centerTop, centerSub){
+    const total = segs.reduce((s,x)=>s+x.v,0) || 1;
+    const R=52, C=2*Math.PI*R;
+    let off = 0, arcs = "";
+    segs.forEach(s => {
+      const frac = s.v/total, len = Math.max(frac*C - 2.5, 1.5);
+      arcs += `<circle r="${R}" cx="75" cy="75" fill="none" stroke="${s.color}" stroke-width="17"
+        stroke-dasharray="${len.toFixed(1)} ${(C-len).toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}"
+        stroke-linecap="butt"><title>${s.label}: ${s.v}</title></circle>`;
+      off += frac*C;
+    });
+    el.innerHTML = `
+      <svg viewBox="0 0 150 150" style="width:100%;height:100%;display:block">
+        <circle r="${R}" cx="75" cy="75" fill="none" stroke="var(--line)" stroke-width="17" opacity=".35"/>
+        ${arcs}
+      </svg>
+      <div class="donut-c"><div><b>${centerTop}</b><span>${centerSub}</span></div></div>`;
+  }
+
+  /* SPC control chart: CL/UCL/LCL, ±3σ, violation dots, trend target */
+  function controlChart(el, opts){
+    const pts = opts.data;
+    const W = 720, H = 250, padL = 40, padR = 14, padT = 18, padB = 26;
+    const iw = W - padL - padR, ih = H - padT - padB;
+    const cl = opts.cl, ucl = opts.ucl, lcl = opts.lcl;
+    const hi = Math.max(ucl, ...pts) + (ucl - cl) * 0.35;
+    const lo = Math.min(lcl, ...pts) - (cl - lcl) * 0.35;
+    const X = i => padL + i*iw/(pts.length-1);
+    const Y = v => padT + (1 - (v-lo)/(hi-lo))*ih;
+    const css = getComputedStyle(document.documentElement);
+    const acc  = css.getPropertyValue("--acc").trim()  || "#38bdf8";
+    const bad  = css.getPropertyValue("--bad").trim()  || "#f87171";
+    const txt3 = css.getPropertyValue("--txt3").trim() || "#64748b";
+    const ooc  = pts.map((v,i) => (v > ucl || v < lcl) ? i : -1).filter(i => i >= 0);
+    const we   = opts.we || {};
+    const weIdx = Object.keys(we).map(Number).filter(i => !ooc.includes(i));
+
+    const d = "M" + pts.map((v,i) => X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L");
+    const lim = (v, color, label) =>
+      `<line x1="${padL}" x2="${W-padR}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="${color}" ${color==="var(--good)"?"stroke-dasharray=\"6 4\"":"stroke-dasharray=\"4 3\""} opacity=".85"/>
+       <text x="${W-padR}" y="${(Y(v)-4).toFixed(1)}" text-anchor="end" font-size="9" fill="${color}" class="mono">${label}</text>`;
+
+    let xLabels = "";
+    const step = Math.max(1, Math.ceil(pts.length/8));
+    pts.forEach((v,i) => { if (!(i % step)) xLabels += `<text x="${X(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="${txt3}" class="mono">${opts.labels[i] ?? i}</text>`; });
+
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      ${lim(ucl, bad, "UCL " + (+ucl).toFixed(2))}
+      ${lim(cl, "var(--good)", "CL " + (+cl).toFixed(2))}
+      ${lim(lcl, bad, "LCL " + (+lcl).toFixed(2))}
+      ${xLabels}
+      <path d="${d}" fill="none" stroke="${acc}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${ooc.map(i => `<circle cx="${X(i).toFixed(1)}" cy="${Y(pts[i]).toFixed(1)}" r="5" fill="none" stroke="${bad}" stroke-width="2"/>
+        <circle cx="${X(i).toFixed(1)}" cy="${Y(pts[i]).toFixed(1)}" r="2" fill="${bad}"/>`).join("")}
+      ${weIdx.map(i => `<circle cx="${X(i).toFixed(1)}" cy="${Y(pts[i]).toFixed(1)}" r="6.5" fill="none" stroke="var(--warn)" stroke-width="1.6" stroke-dasharray="2.5 2" opacity=".95"/>`).join("")}
+      <circle class="hd" r="4" fill="${acc}" stroke="var(--panel-solid)" stroke-width="2" opacity="0"/>
+      <line class="hl" y1="${padT}" y2="${padT+ih}" stroke="${txt3}" stroke-dasharray="3 4" opacity="0"/>
+      <rect class="hr" x="${padL}" y="${padT}" width="${iw}" height="${ih}" fill="transparent"/>
+    </svg>`;
+
+    const svg = el.querySelector("svg"), dot = el.querySelector(".hd"), hline = el.querySelector(".hl"), hit = el.querySelector(".hr");
+    hit.onmousemove = e => {
+      const r = svg.getBoundingClientRect();
+      const x = (e.clientX - r.left)/r.width*W;
+      const i = Math.max(0, Math.min(pts.length-1, Math.round((x-padL)/(iw/(pts.length-1)))));
+      dot.setAttribute("cx", X(i)); dot.setAttribute("cy", Y(pts[i])); dot.setAttribute("opacity","1");
+      hline.setAttribute("x1", X(i)); hline.setAttribute("x2", X(i)); hline.setAttribute("opacity",".6");
+      if (opts.onHover) opts.onHover(i, ooc.includes(i), we[i]);
+    };
+    hit.onmouseleave = () => { dot.setAttribute("opacity","0"); hline.setAttribute("opacity","0"); if (opts.onOut) opts.onOut(); };
+    return { ooc, outOfControl: ooc.length };
+  }
+
+  /* Pareto: sorted bars + cumulative % line */
+  function pareto(el, items){
+    const W = 720, H = 250, padL = 40, padR = 44, padT = 18, padB = 58;
+    const iw = W - padL - padR, ih = H - padT - padB;
+    const css = getComputedStyle(document.documentElement);
+    const acc = css.getPropertyValue("--acc").trim() || "#38bdf8";
+    const bad = css.getPropertyValue("--bad").trim() || "#f87171";
+    const txt3 = css.getPropertyValue("--txt3").trim() || "#64748b";
+    const total = items.reduce((s,x)=>s+x.v,0) || 1;
+    let cum = 0;
+    const pts = items.map(it => { cum += it.v; return cum/total*100; });
+    const maxV = Math.max(...items.map(i=>i.v)) * 1.1;
+    const X = i => padL + (i+0.5)*iw/items.length;
+    const YL = v => padT + (1 - v/maxV)*ih;
+    const YR = p => padT + (1 - p/100)*ih;
+    const line = "M" + pts.map((p,i) => X(i).toFixed(1)+","+YR(p).toFixed(1)).join(" L");
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      ${[0,25,50,75,100].map(p => `<line x1="${padL}" x2="${W-padR}" y1="${YR(p).toFixed(1)}" y2="${YR(p).toFixed(1)}" stroke="var(--line)" stroke-dasharray="3 5"/>
+        <text x="${W-padR+6}" y="${(YR(p)+3).toFixed(1)}" font-size="9" fill="${txt3}" class="mono">${p}%</text>`).join("")}
+      ${items.map((it,i) => {
+        const y = YL(it.v), h = padT+ih - y;
+        const color = (it.color || (i===0 ? bad : acc));
+        return `<rect x="${(X(i)-Math.min(26,iw/items.length*0.32)).toFixed(1)}" y="${y.toFixed(1)}" width="${(Math.min(52,iw/items.length*0.64)).toFixed(1)}" height="${Math.max(h,1).toFixed(1)}" rx="4" fill="${color}" opacity=".92"><title>${esc(it.label)}: ${it.v} (${(it.v/total*100).toFixed(1)}%)</title></rect>
+          <text x="${X(i).toFixed(1)}" y="${(y-5).toFixed(1)}" text-anchor="middle" font-size="9.5" fill="var(--txt2)" class="mono">${it.v}</text>`;
+      }).join("")}
+      <path d="${line}" fill="none" stroke="var(--pur)" stroke-width="2" stroke-linecap="round"/>
+      ${pts.map((p,i) => `<circle cx="${X(i).toFixed(1)}" cy="${YR(p).toFixed(1)}" r="3" fill="var(--pur)"/>`).join("")}
+      ${items.map((it,i) => `<text x="${X(i).toFixed(1)}" y="${H-40}" font-size="9" fill="${txt3}" transform="rotate(-28 ${X(i).toFixed(1)} ${H-40})" text-anchor="end">${esc(it.label.length>16?it.label.slice(0,15)+"…":it.label)}</text>`).join("")}
+    </svg>`;
+  }
+
+  return { lineChart, spark, donut, controlChart, pareto };
+})();
+
+</script>
+<script>
+"use strict";
+/* ============================================================
+   FDB NPI Command Center — main app
+   ============================================================ */
+
+const STATE = {
+  view: "overview",
+  product: "ALL",
+  stage: "ALL",
+  side: "ALL",
+  line: "ALL",
+  lot: "ALL",
+  range: "30D",
+  sortKey: null,
+  sortDir: 1,
+  hovered: null,
+  ganttMode: "lots",
+  ganttZoom: "week",
+  ganttCenter: null,
+};
+
+const VIEWS = {
+  overview:  { title:"Overview",       sub:"New Product Introduction · real-time command view" },
+  products:  { title:"Products",       sub:"X4151–X4156 · stage, side, yield & volume" },
+  processes: { title:"Processes",      sub:"Rotor · Pillow-stator · Fan assembly · Test accessory" },
+  kpi:       { title:"KPI Deep Dive",  sub:"FPY · FY · UPH · OEE · Shipment · Claims · FACA" },
+  quality:   { title:"Quality — SPC",  sub:"Control charts · Cpk · Pareto · defect mix" },
+  gantt:     { title:"Projects — Gantt", sub:"NPI stage gates & ramp plan" },
+  faca:      { title:"FACA",           sub:"Follow-up & Corrective Action Committee" },
+  claims:    { title:"Customer Claims",sub:"Complaints, containment & 8D" },
+  shipments: { title:"Shipment Achievement", sub:"Commit vs actual, weekly" },
+};
+
+const $q  = s => document.querySelector(s);
+const $q$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- helpers ---------- */
+function delta(arr, n=1){
+  const a = arr.at(-1-n), b = arr.at(-1);
+  if (a === undefined || a === 0) return null;
+  return (b - a) / a * 100;
+}
+const trendHtml = d => d == null ? `<span class="trend fl">—</span>`
+  : `<span class="trend ${d>=0.05?"up":d<=-0.05?"dn":"fl"}">${d>=0?"▲":"▼"} ${Math.abs(d).toFixed(1)}%</span>`;
+
+function toast(msg, kind="acc"){
+  const el = document.createElement("div");
+  el.className = `toast ${kind}`;
+  el.innerHTML = msg;
+  $q("#toastRoot").appendChild(el);
+  setTimeout(() => { el.style.opacity = "0"; el.style.transform = "translateX(20px)"; }, 2600);
+  setTimeout(() => el.remove(), 3000);
+}
+
+/* ---------- DataHub: demo (in-memory, persisted locally) or REST ---------- */
+const DataHub = {
+  mode: localStorage.getItem("fdb-dh-mode") || "demo",
+  baseUrl: localStorage.getItem("fdb-dh-url") || "",
+  async req(path, opt){
+    const res = await fetch(this.baseUrl.replace(/\/$/,"") + path, {
+      headers: { "Content-Type": "application/json" },
+      ...opt,
+    });
+    if (!res.ok) throw new Error(res.status + " " + res.statusText);
+    return res.json();
+  },
+  testConnection(){
+    if (this.mode !== "rest") return Promise.resolve({ ok:true, note:"demo mode — in-memory data, edits persist locally" });
+    return this.req("/health").then(() => ({ ok:true, note:"REST endpoint answered /health" }))
+      .catch(e => ({ ok:false, note:String(e.message || e) }));
+  },
+  async updateClaim(id, patch){
+    if (this.mode === "rest") await this.req(`/claims/${id}`, { method:"PATCH", body: JSON.stringify(patch) });
+    DB.updateClaim(id, patch);
+  },
+  async addClaim(claim){
+    if (this.mode === "rest"){ const saved = await this.req("/claims", { method:"POST", body: JSON.stringify(claim) }); DB.addClaim(saved || claim); }
+    else DB.addClaim(claim);
+  },
+  async updateFaca(id, patch){
+    if (this.mode === "rest") await this.req(`/faca/${id}`, { method:"PATCH", body: JSON.stringify(patch) });
+    DB.updateFaca(id, patch);
+  },
+};
+
+/* ---------- CSV export (Excel-compatible BOM) ---------- */
+function exportCSV(name, rows){
+  const q = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+  const csv = [rows[0].map(q).join(","), ...rows.slice(1).map(r => r.map(q).join(","))].join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type:"text/csv;charset=utf-8" }));
+  a.download = name; a.click();
+  URL.revokeObjectURL(a.href);
+  toast(`Exported <b>${name}</b> (${rows.length - 1} rows)`, "good");
+}
+function exportProducts(){
+  exportCSV("fdb-products.csv", [["Product","Model","Customer","Stage","Side","FPY","FY","UPH","OEE","Ship%","Claims","FACA","YTD","Target"],
+    ...filteredProducts().map(p => { const k = DB.PRODUCT_KPI[p.id];
+      return [p.id, p.name, p.customer, p.stage, p.side, k.fpy, k.fy, k.uph, k.oee, k.ship, k.claim, k.faca, p.vol.ytd, p.vol.target]; })]);
+}
+function exportClaims(){
+  exportCSV("fdb-claims.csv", [["Claim","Product","Side","Customer","Severity","Status","Issue","Qty","Owner","ETA"],
+    ...DB.CLAIMS.map(c => [c.id, c.product, c.side, c.customer, c.severity, c.status, c.issue, c.qty, c.owner, c.eta])]);
+}
+function exportShipments(){
+  exportCSV("fdb-shipments.csv", [["Week","Commit","Actual","Achievement%"],
+    ...DB.SHIPMENTS.map(s => [s.week, s.commit, s.actual, (s.actual/s.commit*100).toFixed(1)])]);
+}
+
+/* ---------- sortable products ---------- */
+const SORTABLE = ["id","name","stage","lot","side","line","fpy","fy","uph","oee","ship","claim","vol"];
+function sortedProducts(){
+  const key = STATE.sortKey;
+  const val = p => {
+    const k = DB.PRODUCT_KPI[p.id];
+    return ({ id:p.id, name:p.name, stage:p.stage, lot:(DB.PRODUCT_LOTS[p.id]||[]).join(","), side:p.side, line:p.line,
+      fpy:k.fpy, fy:k.fy, uph:k.uph, oee:k.oee, ship:k.ship, claim:k.claim,
+      vol:p.vol.ytd/p.vol.target })[key];
+  };
+  const arr = [...filteredProducts()];
+  if (key) arr.sort((a,b) => { const x = val(a), y = val(b); return (x<y?-1:x>y?1:0) * STATE.sortDir; });
+  return arr;
+}
+
+/* ---------- theme ---------- */
+function applyTheme(t){
+  document.documentElement.dataset.theme = t;
+  const btn = $q("#themeBtn"); if (btn) btn.textContent = t === "dark" ? "🌙" : "☀️";
+  try { localStorage.setItem("fdb-theme", t); } catch(e){}
+}
+function initTheme(){
+  let t = null;
+  try { t = localStorage.getItem("fdb-theme"); } catch(e){}
+  applyTheme(t || "dark");
+}
+
+/* ---------- filtering ---------- */
+function filteredProducts(){
+  return DB.PRODUCTS.filter(p =>
+    (STATE.product === "ALL" || p.id === STATE.product) &&
+    (STATE.stage === "ALL" || p.stage === STATE.stage) &&
+    (STATE.side === "ALL" || p.side.includes(STATE.side)) &&
+    (STATE.line === "ALL" || p.line === STATE.line) &&
+    (STATE.lot === "ALL" || (DB.PRODUCT_LOTS[p.id] || []).includes(STATE.lot))
+  );
+}
+function rebuildLotSelect(){
+  const sel = $q("#lotSel");
+  if (!sel) return;
+  const avail = STATE.stage === "ALL" ? DB.LOTS : DB.LOTS.filter(l => l.stage === STATE.stage);
+  sel.innerHTML = `<option value="ALL">All lots</option>` +
+    avail.map(l => `<option value="${l.id}" ${STATE.lot===l.id?"selected":""}>${l.id} · ${l.stage} · ${DB.fmtW(l.units)}u</option>`).join("");
+  if (STATE.lot !== "ALL" && !avail.some(l => l.id === STATE.lot)) STATE.lot = "ALL";
+  sel.value = STATE.lot;
+  sel.onchange = () => {
+    STATE.lot = sel.value;
+    if (STATE.lot !== "ALL"){
+      const lot = DB.LOTS.find(l => l.id === STATE.lot);
+      if (lot && STATE.stage === "ALL"){ STATE.stage = lot.stage; }
+    }
+    syncSegs();
+    setView(STATE.view);
+    toast(`Lot → <b>${STATE.lot==="ALL"?"All":STATE.lot}</b>`);
+  };
+}
+function buildProductSelect(){
+  const sel = $q("#productSel");
+  sel.innerHTML = `<option value="ALL">All products</option>` +
+    DB.PRODUCTS.map(p => `<option value="${p.id}" ${STATE.product===p.id?"selected":""}>${p.id} · ${esc(p.name)}</option>`).join("");
+  sel.value = STATE.product;
+  sel.onchange = () => {
+    STATE.product = sel.value;
+    // keep line/stage/lot coherent with the chosen product
+    if (STATE.product !== "ALL"){
+      const p = DB.PRODUCTS.find(x => x.id === STATE.product);
+      if (p){
+        STATE.line = p.line;
+        if (p.stage !== STATE.stage){ STATE.stage = p.stage; STATE.lot = "ALL"; }
+      }
+    }
+    syncSegs();
+    setView(STATE.view);
+    refreshBadges(); buildTicker();
+    toast(`Product → <b>${STATE.product==="ALL"?"All":STATE.product}</b>`);
+  };
+}
+function sliceByRange(series){
+  const n = { "7D":7, "30D":14, "QTD":28, "YTD":42 }[STATE.range] ?? 14;
+  return series.slice(-n);
+}
+function labelsFor(series, n){
+  const out = [];
+  const end = DB.TODAY;
+  for (let i = n-1; i >= 0; i--){
+    const d = new Date(end); d.setDate(d.getDate()-i);
+    out.push(`${d.getMonth()+1}/${d.getDate()}`);
+  }
+  return out;
+}
+function isoOf(dt){
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
+}
+
+/* ============================================================
+   KPI SNAPSHOT — respects product/stage/side filters
+   ============================================================ */
+function kpiSnapshot(){
+  const prods = filteredProducts();
+  const stageIdx = STAGE_IDX[STATE.stage] ?? 1.5; // avg stage penalty
+  const prodsAvg = key => prods.length
+    ? prods.reduce((s,p)=>s+DB.PRODUCT_KPI[p.id][key],0)/prods.length
+    : 96.2;
+
+  let fpy  = prodsAvg("fpy");
+  let fy   = prodsAvg("fy");
+  let uph  = Math.round(prodsAvg("uph"));
+  let oee  = prodsAvg("oee");
+  let ship = prodsAvg("ship");
+
+  // stage filter bias: blend toward stage-level values
+  if (STATE.stage !== "ALL"){
+    const sb = { P1:-3.4, P2:-2.1, EVT:-1.4, DVT:-0.6, PVT:0 }[STATE.stage] ?? 0;
+    fpy += sb*0.55; fy += sb*0.3; uph = Math.round(uph + sb*8); oee += sb*0.7;
+  }
+  // side bias
+  if (STATE.side !== "ALL"){
+    fpy += (DB.SIDE_KPI[STATE.side].fpy - 96.2)*0.6;
+    uph = Math.round(uph + (DB.SIDE_KPI[STATE.side].uph - 146)*0.5);
+    oee += (DB.SIDE_KPI[STATE.side].oee - 79.5)*0.6;
+  }
+  // lot bias — selected lot's own KPIs dominate the blend
+  if (STATE.lot !== "ALL" && DB.LOT_KPI[STATE.lot]){
+    const lk = DB.LOT_KPI[STATE.lot];
+    fpy = fpy*0.35 + lk.fpy*0.65;
+    fy  = fy*0.35 + lk.fy*0.65;
+    uph = Math.round(uph*0.35 + lk.uph*0.65);
+    oee = oee*0.35 + lk.oee*0.65;
+  }
+  // line bias
+  if (STATE.line !== "ALL" && DB.LINE_KPI[STATE.line]){
+    fpy += (DB.LINE_KPI[STATE.line].fpy - 96.3)*0.7;
+    uph = Math.round(uph + (DB.LINE_KPI[STATE.line].uph - 150)*0.55);
+    oee += (DB.LINE_KPI[STATE.line].oee - 80)*0.7;
+    ship += (DB.LINE_KPI[STATE.line].ship - 97.5)*0.6;
+  }
+  fpy  = Math.min(99.8, Math.max(84, fpy));
+  fy   = Math.min(99.9, Math.max(90, fy));
+  oee  = Math.min(94, Math.max(60, oee));
+  ship = Math.min(100, Math.max(80, ship));
+
+  const claims = DB.CLAIMS.filter(c =>
+    (STATE.product==="ALL" || c.product===STATE.product) &&
+    (STATE.side==="ALL" || c.side===STATE.side)
+  ).length;
+  const facas = DB.FACA.filter(f =>
+    (STATE.product==="ALL" || f.product===STATE.product)
+  ).length;
+
+  return {
+    fpy:+fpy.toFixed(1), fy:+fy.toFixed(1), uph, oee:+oee.toFixed(1), ship:+ship.toFixed(1),
+    claim: claims, faca: facas,
+    nProducts: prods.length,
+  };
+}
+const STAGE_IDX = { P1:3.4, P2:2.1, EVT:1.4, DVT:0.6, PVT:0 };
+
+/* ---------- range-shifted series for the filtered snapshot ---------- */
+function shiftedSeries(base, shiftPct, n){
+  const f = 1 + shiftPct/100;
+  return base.slice(-n).map(v => +(v*f).toFixed(2));
+}
+
+/* ============================================================
+   VIEW RENDERERS
+   ============================================================ */
+function renderKpiCards(mount, snap){
+  const S = DB.KPI_SERIES;
+  const defs = [
+    { id:"fpy",  ico:"✅", name:"FPY",  full:"First Pass Yield", val:`${snap.fpy}%`,  kc:"var(--good)", series:shiftedSeries(S.fpy, (snap.fpy-96.2)*0.8), target:96.5, note:"blended, rotor→test" },
+    { id:"fy",   ico:"🏁", name:"FY",   full:"Final Yield",      val:`${snap.fy}%`,   kc:"var(--acc)",  series:shiftedSeries(S.fy, (snap.fy-98.2)*0.8),  target:98.5, note:"incl. rework recovery" },
+    { id:"uph",  ico:"⚡", name:"UPH",  full:"Units Per Hour",   val:snap.uph,        kc:"var(--pur)",  series:shiftedSeries(S.uph,(snap.uph-148)*2),    target:160,  note:"line-rated" },
+    { id:"oee",  ico:"🏭", name:"OEE",  full:"Overall Equipment Effectiveness", val:`${snap.oee}%`, kc:"var(--warn)", series:shiftedSeries(S.oee,(snap.oee-78.5)*1.2), target:82, note:"A × P × Q" },
+    { id:"ship", ico:"📦", name:"SHIP", full:"Shipment Achievement", val:`${snap.ship}%`, kc:"var(--acc)", series:shiftedSeries(S.ship,(snap.ship-97.5)*0.9), target:100, note:"commit vs actual" },
+    { id:"claim",ico:"⚑",  name:"CLAIM",full:"Customer Claims",  val:snap.claim,      kc:"var(--bad)",  series:S.claim.slice(-14).map(v=>v + (snap.claim - S.claim.at(-1))), target:0, note:"open, quarter" },
+    { id:"faca", ico:"✎",  name:"FACA", full:"FACA Actions",     val:snap.faca,       kc:"var(--bad)",  series:S.faca.slice(-14).map(v=>v + (snap.faca - S.faca.at(-1))),   target:0, note:"open actions" },
+  ];
+  mount.innerHTML = defs.map(d => `
+    <div class="card kpi" data-kpi="${d.id}" title="${esc(d.full)}">
+      <div class="kpi-top">
+        <span class="kpi-ico" style="--kc:${d.kc}">${d.ico}</span>
+        <span class="pill ${d.id==="claim"||d.id==="faca" ? (d.val>0?"warn":"good") : "acc"}">${d.id==="claim"||d.id==="faca" ? (d.val>0?"open":"clear") : "vs " + d.target + (d.id==="uph"?"":"%")}</span>
+      </div>
+      <div class="kpi-name">${d.name}</div>
+      <div class="kpi-val">${d.val}${typeof d.val==="number" ? "" : ""}</div>
+      <div class="kpi-foot">
+        ${trendHtml(delta(d.series))}
+        <div class="kpi-spark" data-spark="${d.id}"></div>
+      </div>
+      <div class="kpi-note">${d.note}</div>
+    </div>`).join("");
+
+  mount.querySelectorAll("[data-spark]").forEach(el => {
+    const id = el.dataset.spark;
+    const def = defs.find(x=>x.id===id);
+    const goodUp = !(id==="claim" || id==="faca");
+    const last = def.series.at(-1), prev = def.series.at(-5) ?? last;
+    const up = last >= prev;
+    const color = (goodUp ? (up ? "var(--good)" : "var(--bad)") : (up ? "var(--bad)" : "var(--good)"));
+    CHARTS.spark(el, def.series, color);
+  });
+
+  mount.querySelectorAll(".kpi").forEach(card => {
+    card.onclick = () => { STATE.view = "kpi"; STATE.kpiFocus = card.dataset.kpi; setView("kpi"); };
+  });
+}
+
+/* ---------- OVERVIEW ---------- */
+function viewOverview(){
+  const snap = kpiSnapshot();
+  const S = DB.KPI_SERIES;
+  const n = { "7D":7, "30D":14, "QTD":28, "YTD":42 }[STATE.range] ?? 14;
+
+  return `
+  <div class="grid g-kpi" id="kpiCards">${""}</div>
+
+  <div class="grid g-32" style="margin-top:14px">
+    <div class="card">
+      <div class="card-head">
+        <h3 id="mainChartTitle">FPY trend — blended</h3>
+        <span class="sub"><span class="pill acc" id="mainChartVal">—</span></span>
+      </div>
+      <div id="mainChart"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>NPI stage pipeline</h3><span class="sub"><span class="pill">units & FPY</span></span></div>
+      <div class="pipe" id="pipeWrap"></div>
+      <div class="card-head" style="margin-top:14px"><h3>Side split — RHS vs LHS</h3></div>
+      <div id="sideSplit" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div class="card-head" style="margin-top:14px"><h3>Line health — L1–L4</h3></div>
+      <div id="lineSplit" style="display:flex;flex-direction:column;gap:9px"></div>
+      <div class="card-head" style="margin-top:14px"><h3>Active lots in current scope</h3></div>
+      <div id="lotStrip" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+  </div>
+
+  <div class="grid g-23" style="margin-top:14px">
+    <div class="card">
+      <div class="card-head">
+        <h3>Process health</h3>
+        <span class="sub"><span class="pill pur">4 processes</span></span>
+      </div>
+      <div class="flow" id="flowWrap"></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h3>Live feed & alerts</h3>
+        <span class="sub"><span class="pill good">live</span></span>
+      </div>
+      <div class="list" id="alertList"></div>
+    </div>
+  </div>
+
+  <div class="sec-head"><h2>Products at a glance</h2><div class="rule"></div><span class="pill">${snap.nProducts} of ${DB.PRODUCTS.length} shown</span></div>
+  <div class="card" style="padding:6px 10px">
+    <div class="table-wrap" style="border:none">
+      ${productTableHTML()}
+    </div>
+  </div>`;
+}
+
+function mountOverview(){
+  const snap = kpiSnapshot();
+  renderKpiCards($q("#kpiCards"), snap);
+
+  // main chart
+  const S = DB.KPI_SERIES;
+  const n = { "7D":7, "30D":14, "QTD":28, "YTD":42 }[STATE.range] ?? 14;
+  const series = shiftedSeries(S.fpy, (snap.fpy-96.2)*0.8, n);
+  const labels = labelsFor(S.fpy, n);
+  const draw = () => {
+    CHARTS.lineChart($q("#mainChart"), {
+      data: series, labels, target: 96.5,
+      onHover: i => $q("#mainChartVal").textContent = `D-${series.length-1-i} · ${series[i]}%`,
+      onOut:   () => $q("#mainChartVal").textContent = `now ${series.at(-1)}%`,
+    });
+    $q("#mainChartVal").textContent = `now ${series.at(-1)}%`;
+  };
+  draw();
+
+  // pipeline
+  $q("#pipeWrap").innerHTML = DB.PIPELINE.map(p => `
+    <div class="pipe-stage ${STATE.stage===p.stage?"on":""}" data-stage="${p.stage}">
+      <div class="ps-name">${p.stage}</div>
+      <div class="ps-val">${DB.fmtW(p.units)}</div>
+      <div class="ps-sub">FPY ${p.fpy}%</div>
+    </div>`).join("");
+  $q$("#pipeWrap .pipe-stage").forEach(el => el.onclick = () => {
+    STATE.stage = STATE.stage === el.dataset.stage ? "ALL" : el.dataset.stage;
+    syncSegs(); setView(STATE.view); toast(`Stage filter → <b>${STATE.stage}</b>`);
+  });
+
+  // side split bars
+  const r = DB.SIDE_KPI.RHS, l = DB.SIDE_KPI.LHS;
+  $q("#sideSplit").innerHTML = `
+    ${sideRow("RHS", r)}${sideRow("LHS", l)}`;
+
+  // line health comparison
+  $q("#lineSplit").innerHTML = DB.LINES.map(ln => {
+    const k = DB.LINE_KPI[ln];
+    const prods = DB.PRODUCTS.filter(p => p.line===ln).map(p=>p.id).join(", ") || "—";
+    const pct = (k.fpy-90)/(100-90)*100;
+    return `<div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <b>${ln} <span style="color:var(--txt3);font-weight:500">· ${prods}</span></b>
+        <span class="mono" style="color:var(--txt2)">FPY ${k.fpy}% · UPH ${k.uph} · OEE ${k.oee}%</span>
+      </div>
+      <div class="bar"><i class="${k.fpy>=96.5?"g":k.fpy>=95?"w":"b"}" style="width:${pct.toFixed(0)}%"></i></div>
+    </div>`;
+  }).join("");
+
+  // active lots strip — clickable chips scoped to the current filters
+  const scopedLots = [...new Set(filteredProducts().flatMap(p => DB.PRODUCT_LOTS[p.id] || []))]
+    .map(id => DB.LOTS.find(l => l.id===id)).filter(Boolean);
+  $q("#lotStrip").innerHTML = scopedLots.length ? scopedLots.map(l => {
+    const k = DB.LOT_KPI[l.id];
+    const on = STATE.lot === l.id;
+    return `<button class="pill ${on?"acc":k.fpy>=96.5?"good":k.fpy>=94?"warn":"bad"}" data-lot="${l.id}"
+      style="cursor:pointer;border:${on?"2px":"1px"} solid var(--line2)" title="FPY ${k.fpy}% · FY ${k.fy}% · UPH ${k.uph} · OEE ${k.oee}%">
+      ${l.id} · ${l.stage} · FPY ${k.fpy}%
+    </button>`;
+  }).join("") : `<span class="empty">No lots in scope</span>`;
+  $q$("#lotStrip [data-lot]").forEach(b => b.onclick = () => {
+    STATE.lot = STATE.lot === b.dataset.lot ? "ALL" : b.dataset.lot;
+    const l = DB.LOTS.find(x => x.id === STATE.lot);
+    if (l && STATE.stage === "ALL") STATE.stage = l.stage;
+    syncSegs(); setView(STATE.view);
+    toast(`Lot → <b>${STATE.lot}</b>`);
+  });
+
+  // flow
+  $q("#flowWrap").innerHTML = DB.PROCESSES.map((pr,i) => `
+    ${i ? '<div class="flow-arrow"></div>' : ""}
+    <div class="flow-node" data-proc="${pr.id}">
+      <div class="fn-head">
+        <div class="fn-ico">${pr.ico}</div>
+        <div><div class="fn-name">${pr.name}</div><div class="fn-sub">target FPY ${pr.target.fpy}%</div></div>
+      </div>
+      <div class="fn-kpis">
+        <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][STATE.stage==="ALL"?"DVT":STATE.stage].fpy.toFixed(1)}%</b><span>FPY</span></div>
+        <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][STATE.stage==="ALL"?"DVT":STATE.stage].uph}</b><span>UPH</span></div>
+        <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][STATE.stage==="ALL"?"DVT":STATE.stage].oee.toFixed(0)}%</b><span>OEE</span></div>
+      </div>
+    </div>`).join("");
+  $q$("#flowWrap .flow-node").forEach(el => el.onclick = () => { STATE.proc = el.dataset.proc; setView("processes"); });
+
+  // alerts — derived live from claims/FACA/projects + system alerts
+  const alerts = DB.allAlerts();
+  $q("#alertList").innerHTML = alerts.map(a => `
+    <div class="item">
+      <div class="item-ico" style="background:var(--${a.sev}-soft);color:var(--${a.sev})">${a.sev==="bad"?"⚑":a.sev==="warn"?"⚠":"✓"}</div>
+      <div class="item-body"><div class="item-title">${esc(a.txt)}</div><div class="item-sub">just now · auto-detected</div></div>
+    </div>`).join("");
+}
+
+function sideRow(name, k){
+  const pct = (k.fpy-90)/(100-90)*100;
+  return `<div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+      <b>${name}</b><span class="mono" style="color:var(--txt2)">FPY ${k.fpy}% · UPH ${k.uph} · OEE ${k.oee}%</span>
+    </div>
+    <div class="bar"><i class="${k.fpy>=96.5?"g":k.fpy>=95?"w":"b"}" style="width:${pct.toFixed(0)}%"></i></div>
+  </div>`;
+}
+
+/* ---------- PRODUCTS ---------- */
+function productTableHTML(){
+  const prods = sortedProducts();
+  const arrow = key => STATE.sortKey===key ? `<span class="arr">${STATE.sortDir===1?"▲":"▼"}</span>` : "";
+  const rows = prods.map(p => {
+    const k = DB.PRODUCT_KPI[p.id];
+    const volPct = Math.min(100, p.vol.ytd/p.vol.target*100);
+    const fpyCls = k.fpy>=96.5?"good":k.fpy>=94?"warn":"bad";
+    return `<tr data-prod="${p.id}">
+      <td class="mono"><b>${p.id}</b></td>
+      <td>${esc(p.name)}<div style="font-size:10px;color:var(--txt3)">${esc(p.customer)} · ${p.mule}</div></td>
+      <td><span class="pill ${p.stage==="PVT"?"good":p.stage==="DVT"?"acc":p.stage==="EVT"?"pur":"warn"}">${p.stage}</span></td>
+      <td>${(DB.PRODUCT_LOTS[p.id]||[]).join(" · ")}</td>
+      <td>${p.side}</td>
+      <td><span class="pill">${p.line}</span></td>
+      <td class="num"><span class="pill ${fpyCls}">${k.fpy.toFixed(1)}%</span></td>
+      <td class="num">${k.fy.toFixed(1)}%</td>
+      <td class="num">${k.uph}</td>
+      <td class="num">${k.oee.toFixed(0)}%</td>
+      <td class="num">${k.ship.toFixed(0)}%</td>
+      <td class="num">${k.claim}/${k.faca}</td>
+      <td style="min-width:120px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="bar" style="flex:1"><i class="${volPct>=100?"g":volPct>=90?"w":"b"}" style="width:${volPct.toFixed(0)}%"></i></div>
+          <span class="num" style="font-size:11px;color:var(--txt2)">${DB.fmtW(p.vol.ytd)}/${DB.fmtW(p.vol.target)}</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+  return `<table>
+    <thead><tr>
+      ${["id","name","stage","lot","side","line","fpy","fy","uph","oee","ship","claim","vol"]
+        .map(key => {
+          const label = { id:"Product", name:"Model", stage:"Stage", lot:"Lots", side:"Side", line:"Line", fpy:"FPY", fy:"FY", uph:"UPH", oee:"OEE", ship:"Ship %", claim:"Claims/FACA", vol:"YTD Volume" }[key];
+          return `<th data-sort="${key}">${label} ${arrow(key)}</th>`;
+        }).join("")}
+    </tr></thead>
+    <tbody>${rows || `<tr><td colspan="13" class="empty">No products match filters</td></tr>`}</tbody>
+  </table>`;
+}
+
+function bindSort(){
+  $q$("#viewArea th[data-sort]").forEach(th => th.onclick = () => {
+    const key = th.dataset.sort;
+    if (STATE.sortKey === key) STATE.sortDir *= -1;
+    else { STATE.sortKey = key; STATE.sortDir = 1; }
+    if (STATE.view === "products"){ $q("#viewArea .table-wrap").innerHTML = productTableHTML(); bindSort(); }
+  });
+}
+
+function viewProducts(){
+  return `
+  <div class="grid g-kpi" id="kpiCards"></div>
+  <div class="card" style="margin-top:14px;padding:6px 10px">
+    <div class="card-head" style="padding:10px 6px 4px">
+      <h3>Product portfolio</h3>
+      <span class="sub">
+        <span class="pill acc">${filteredProducts().length} products</span>
+        <button class="mini-btn" id="exportProducts">⬇ CSV</button>
+      </span>
+    </div>
+    <div class="table-wrap" style="border:none">${productTableHTML()}</div>
+  </div>
+  <div class="grid g-2" style="margin-top:14px">
+    <div class="card">
+      <div class="card-head"><h3>FPY by product</h3><span class="sub"><span class="pill acc">current</span></span></div>
+      <div id="prodFpyBars" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>FPY trend by product</h3><span class="sub"><span class="pill">28d</span></span></div>
+      <div id="prodFpyChart"></div>
+    </div>
+  </div>`;
+}
+
+function mountProducts(){
+  renderKpiCards($q("#kpiCards"), kpiSnapshot());
+  bindSort();
+  const eb = $q("#exportProducts"); if (eb) eb.onclick = exportProducts;
+  $q("#prodFpyBars").innerHTML = sortedProducts().map(p => {
+    const k = DB.PRODUCT_KPI[p.id];
+    const w = (k.fpy-84)/(100-84)*100;
+    return `<div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+        <b>${p.id} <span style="color:var(--txt3);font-weight:500">· ${esc(p.name)}</span></b>
+        <span class="mono">${k.fpy.toFixed(1)}% <span style="color:var(--txt3)">/ 96.5 target</span></span>
+      </div>
+      <div class="bar"><i class="${k.fpy>=96.5?"g":k.fpy>=94?"w":"b"}" style="width:${Math.max(3,w).toFixed(0)}%"></i></div>
+    </div>`;
+  }).join("") || `<div class="empty">No products match filters</div>`;
+
+  // composite chart: average of filtered products' fpys
+  const prods = filteredProducts();
+  const len = 28;
+  const avg = Array.from({length:len}, (_,i) => {
+    if (!prods.length) return 95;
+    const vals = prods.map(p => DB.PRODUCT_KPI[p.id].fpys[i]);
+    return +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2);
+  });
+  CHARTS.lineChart($q("#prodFpyChart"), {
+    data: avg, labels: labelsFor(avg, len), target: 96.5,
+    fmt: v => v.toFixed(1),
+  });
+}
+
+/* ---------- PROCESSES ---------- */
+function viewProcesses(){
+  const stage = STATE.stage === "ALL" ? "DVT" : STATE.stage;
+  return `
+  <div class="grid g-32" style="margin-top:2px">
+    <div class="card">
+      <div class="card-head">
+        <h3>Process flow — click a node</h3>
+        <span class="sub"><span class="pill pur">stage: ${stage}</span></span>
+      </div>
+      <div class="flow" id="flowWrap"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Yield funnel (FPY)</h3></div>
+      <div id="funnel" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+  </div>
+  <div class="grid g-2" style="margin-top:14px">
+    <div class="card">
+      <div class="card-head"><h3 id="procDetailTitle">Select a process</h3></div>
+      <div id="procDetail" class="empty">Click a process node to see its stage matrix, FPY trend and open issues.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Stage × process FPY matrix</h3><span class="sub"><span class="pill">heat view</span></span></div>
+      <div class="table-wrap" id="procMatrix"></div>
+    </div>
+  </div>`;
+}
+
+function mountProcesses(){
+  const stage = STATE.stage === "ALL" ? "DVT" : STATE.stage;
+  $q("#flowWrap").innerHTML = DB.PROCESSES.map((pr,i) => `
+    ${i ? '<div class="flow-arrow"></div>' : ""}
+    <div class="flow-node ${STATE.proc===pr.id?"on":""}" data-proc="${pr.id}">
+      <div class="fn-head">
+        <div class="fn-ico">${pr.ico}</div>
+        <div><div class="fn-name">${pr.name}</div><div class="fn-sub">target FPY ${pr.target.fpy}%</div></div>
+      </div>
+      <div class="fn-kpis">
+        <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][stage].fpy.toFixed(1)}%</b><span>FPY</span></div>
+        <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][stage].uph}</b><span>UPH</span></div>
+        <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][stage].oee.toFixed(0)}%</b><span>OEE</span></div>
+      </div>
+    </div>`).join("");
+  $q$("#flowWrap .flow-node").forEach(el => el.onclick = () => { STATE.proc = el.dataset.proc; mountProcesses(); renderProcDetail(); });
+
+  // funnel
+  let cum = 100;
+  $q("#funnel").innerHTML = DB.PROCESSES.map(pr => {
+    const fpy = DB.PROCESS_KPI[pr.id][stage].fpy;
+    cum = cum * (fpy/100);
+    return `<div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+        <b>${pr.ico} ${pr.name}</b>
+        <span class="mono">FPY ${fpy.toFixed(1)}% → roll-up ${cum.toFixed(1)}%</span>
+      </div>
+      <div class="bar"><i class="${fpy>=pr.target.fpy?"g":"w"}" style="width:${((fpy-80)/20*100).toFixed(0)}%"></i></div>
+    </div>`;
+  }).join("");
+
+  // matrix
+  const cell = v => {
+    const cls = v>=96.5?"good":v>=94?"warn":"bad";
+    return `<td><span class="pill ${cls}">${v.toFixed(1)}</span></td>`;
+  };
+  $q("#procMatrix").innerHTML = `<table>
+    <thead><tr><th>Process</th>${DB.STAGES.map(s=>`<th>${s}</th>`).join("")}</tr></thead>
+    <tbody>
+      ${DB.PROCESSES.map(pr => `<tr data-proc="${pr.id}">
+        <td><b>${pr.ico} ${pr.name}</b></td>
+        ${DB.STAGES.map(st => cell(DB.PROCESS_KPI[pr.id][st].fpy)).join("")}
+      </tr>`).join("")}
+    </tbody>
+  </table>`;
+
+  renderProcDetail();
+}
+
+function renderProcDetail(){
+  if (!STATE.proc) return;
+  const pr = DB.PROCESSES.find(x=>x.id===STATE.proc);
+  const stage = STATE.stage === "ALL" ? "DVT" : STATE.stage;
+  const k = DB.PROCESS_KPI[pr.id][stage];
+  $q("#procDetailTitle").innerHTML = `${pr.ico} ${pr.name} — <span class="pill acc">${stage}</span>`;
+  $q("#procDetail").className = "";
+  $q("#procDetail").innerHTML = `
+    <div class="modal-grid">
+      <div class="stat-box"><span>FPY</span><b>${k.fpy.toFixed(1)}%</b></div>
+      <div class="stat-box"><span>UPH</span><b>${k.uph}</b></div>
+      <div class="stat-box"><span>OEE</span><b>${k.oee.toFixed(1)}%</b></div>
+      <div class="stat-box"><span>Target FPY</span><b>${pr.target.fpy}%</b></div>
+    </div>
+    <div class="bar" style="margin-bottom:14px"><i class="${k.fpy>=pr.target.fpy?"g":"w"}" style="width:${((k.fpy-80)/20*100).toFixed(0)}%"></i></div>
+    <div id="procTrend"></div>
+    <div class="sec-head"><h2>Linked FACA actions</h2><div class="rule"></div></div>
+    ${(DB.FACA.filter(f=>f.process===pr.id).map(f=>`
+      <div class="item"><div class="item-ico" style="background:var(--pur-soft);color:var(--pur)">${f.ico}</div>
+      <div class="item-body"><div class="item-title">${f.id} · ${esc(f.title)}</div>
+      <div class="item-sub">${f.product} · ${f.owner} · due ${f.due}</div></div>
+      <div class="item-meta"><span class="pill ${f.status==="Overdue"?"bad":f.status==="In Review"?"acc":"warn"}">${f.status}</span></div></div>`).join(""))
+      || `<div class="empty">No open FACA for this process</div>`}`;
+
+  const seedOff = pr.id.length;
+  const base = DB.KPI_SERIES.fpy.slice(-(14));
+  const series = base.map((v,i)=>+(v - 1.2 + ((i*seedOff)%5)*0.18).toFixed(2));
+  CHARTS.lineChart($q("#procTrend"), { data: series, labels: labelsFor(series, series.length), fmt: v=>v.toFixed(1)+"%", target: pr.target.fpy });
+}
+
+/* ---------- KPI DEEP DIVE ---------- */
+function viewKpi(){
+  const focus = STATE.kpiFocus || "fpy";
+  const kdef = DB.KPIS.find(k=>k.id===focus) || DB.KPIS[0];
+  return `
+  <div class="seg" id="kpiTabs" style="margin:2px 0 14px;display:inline-flex">
+    ${DB.KPIS.map(k=>`<button data-kpi="${k.id}" class="${k.id===focus?"on":""}">${k.name}</button>`).join("")}
+  </div>
+  <div id="kpiBody"></div>`;
+}
+
+function mountKpi(){
+  const focus = STATE.kpiFocus || "fpy";
+  const kdef = DB.KPIS.find(k=>k.id===focus) || DB.KPIS[0];
+  $q$("#kpiTabs button").forEach(b => {
+    b.onclick = () => { STATE.kpiFocus = b.dataset.kpi; mountKpi(); retab(); };
+  });
+  function retab(){
+    $q$("#kpiTabs button").forEach(b => b.classList.toggle("on", b.dataset.kpi===STATE.kpiFocus));
+  }
+
+  const snap = kpiSnapshot();
+  const S = DB.KPI_SERIES;
+  const n = { "7D":7, "30D":14, "QTD":28, "YTD":42 }[STATE.range] ?? 14;
+  const map = { fpy:"fpy", fy:"fy", uph:"uph", oee:"oee", ship:"ship", claim:"claim", faca:"faca" };
+  const key = map[focus];
+  const valMap = { fpy:snap.fpy, fy:snap.fy, uph:snap.uph, oee:snap.oee, ship:snap.ship, claim:snap.claim, faca:snap.faca };
+  const baseSeries = S[key];
+  const series = shiftedSeries(baseSeries, key==="uph" ? (valMap[key]-148)*2 : (valMap[key]-(baseSeries.at(-1)))*1.0, n);
+  const labels = labelsFor(baseSeries, n);
+  const goodDown = focus==="claim" || focus==="faca";
+
+  const vsTarget = goodDown ? (valMap[key] <= (kdef.target||0) ? "good" : "bad")
+                            : (valMap[key] >= kdef.target ? "good" : "bad");
+
+  $q("#kpiBody").innerHTML = `
+    <div class="grid g-32">
+      <div class="card">
+        <div class="card-head">
+          <h3>${kdef.name} — ${esc(kdef.full)}</h3>
+          <span class="sub"><span class="pill ${vsTarget}">target ${kdef.target}${kdef.unit==="%"?"%":""} · now ${valMap[key]}${kdef.unit==="%"?"%":""}</span></span>
+        </div>
+        <div id="kpiChart"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Breakdown</h3></div>
+        <div class="modal-grid">
+          <div class="stat-box"><span>Current</span><b>${valMap[key]}${kdef.unit==="%"?"%":""}</b></div>
+          <div class="stat-box"><span>Target</span><b>${kdef.target}${kdef.unit==="%"?"%":""}</b></div>
+          <div class="stat-box"><span>Best (range)</span><b>${goodDown ? Math.min(...series) : Math.max(...series)}${kdef.unit==="%"?"%":""}</b></div>
+          <div class="stat-box"><span>Worst (range)</span><b>${goodDown ? Math.max(...series) : Math.min(...series)}${kdef.unit==="%"?"%":""}</b></div>
+        </div>
+        <div id="kpiByStage" style="display:flex;flex-direction:column;gap:9px"></div>
+      </div>
+    </div>
+    ${focus==="fpy" ? `
+    <div class="sec-head"><h2>FPY stage contribution</h2><div class="rule"></div></div>
+    <div class="grid g-2">
+      <div class="card"><div class="card-head"><h3>Roll-up waterfall</h3></div><div id="fpyWaterfall" style="display:flex;flex-direction:column;gap:9px"></div></div>
+      <div class="card"><div class="card-head"><h3>Side comparison</h3></div><div id="fpySide"></div></div>
+    </div>` : ""}
+    ${(focus==="claim") ? `
+    <div class="sec-head"><h2>Open claims feeding this KPI</h2><div class="rule"></div></div>
+    <div class="card" style="padding:6px 10px">${claimsTableHTML(STATE.product==="ALL"?null:STATE.product)}</div>` : ""}
+    ${(focus==="faca") ? `
+    <div class="sec-head"><h2>Open FACA actions feeding this KPI</h2><div class="rule"></div></div>
+    <div class="card" style="padding:6px 10px">${facaListHTML()}</div>` : ""}
+  `;
+
+  CHARTS.lineChart($q("#kpiChart"), {
+    data: series, labels, target: kdef.target != null ? kdef.target : undefined,
+    fmt: key==="uph" ? v=>Math.round(v) : (v=>v.toFixed(1)),
+    onHover: i => {},
+  });
+
+  $q("#kpiByStage").innerHTML = DB.STAGES.map(st => {
+    const p = DB.PIPELINE.find(x=>x.stage===st);
+    const v = p.fpy;
+    return `<div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <b>${st}</b><span class="mono">${v}% FPY · ${DB.fmtW(p.units)} units</span>
+      </div>
+      <div class="bar"><i class="${v>=96.5?"g":v>=94.5?"w":"b"}" style="width:${((v-90)/10*100).toFixed(0)}%"></i></div>
+    </div>`;
+  }).join("");
+
+  if (focus==="fpy"){
+    let cum = 100;
+    $q("#fpyWaterfall").innerHTML = DB.PROCESSES.map(pr => {
+      const fpy = DB.PROCESS_KPI[pr.id][STATE.stage==="ALL"?"DVT":STATE.stage].fpy;
+      cum *= fpy/100;
+      return `<div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+          <b>${pr.ico} ${pr.name}</b><span class="mono">${fpy.toFixed(1)}% → roll ${cum.toFixed(1)}%</span>
+        </div>
+        <div class="bar"><i class="${fpy>=pr.target.fpy?"g":"w"}" style="width:${((fpy-80)/20*100).toFixed(0)}%"></i></div>
+      </div>`;
+    }).join("");
+    $q("#fpySide").innerHTML = `
+      ${sideRow("RHS", DB.SIDE_KPI.RHS)}
+      ${sideRow("LHS", DB.SIDE_KPI.LHS)}
+      <div class="empty" style="padding-top:8px">Side filter applies globally from the top bar.</div>`;
+  }
+}
+
+/* ---------- QUALITY · SPC & PARETO ---------- */
+function viewQuality(){
+  return `
+  <div class="grid g-kpi" id="qStats"></div>
+  <div class="grid g-2" style="margin-top:14px">
+    <div class="card">
+      <div class="card-head">
+        <h3>FPY control chart (X-chart, ±3σ)</h3>
+        <span class="sub"><span class="pill acc" id="spcVal">—</span></span>
+      </div>
+      <div id="spcChart"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Special-cause violations</h3><span class="sub"><span class="pill bad" id="oocCount">—</span></span></div>
+      <div class="list" id="oocList"></div>
+      <div class="item-sub" style="margin-top:10px">Rule: any point beyond ±3σ from the center line triggers investigation (Wheeler single-point rule). Hover the chart to scan.</div>
+    </div>
+  </div>
+  <div class="grid g-32" style="margin-top:14px">
+    <div class="card">
+      <div class="card-head"><h3>Defect Pareto — top contributors</h3><span class="sub"><span class="pill pur">counts, 30d</span></span></div>
+      <div id="pareto"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Defects by process</h3></div>
+      <div class="donut-wrap">
+        <div class="donut" id="defDonut"></div>
+        <div class="donut-leg" id="defLeg"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+const WE_NAMES = { R1:"Beyond 3σ", R2:"2 of 3 beyond 2σ", R3:"4 of 5 beyond 1σ", R4:"8 consecutive one side" };
+
+function mountQuality(){
+  const { labels, data } = DB.spcSamples();
+  const LSL = 93.0;                        // FPY spec floor
+  const st = DB.spcStats(data);
+  const cpk = (st.cl - LSL) / (3 * st.sd);
+  const we = DB.westernElectric(data, st);
+  const weCount = Object.keys(we).length;
+  const res = CHARTS.controlChart($q("#spcChart"), {
+    data, labels, cl: st.cl, ucl: st.ucl, lcl: st.lcl, we,
+    onHover: (i, ooc, rules) => $q("#spcVal").textContent = `${labels[i]} · ${data[i]}%${ooc ? " · ⚠ OUT OF CONTROL" : rules ? " · " + rules.map(r=>WE_NAMES[r]).join(" + ") : ""}`,
+    onOut: () => $q("#spcVal").textContent = `CL ${st.cl.toFixed(2)}% · σ ${st.sd.toFixed(2)} · ${weCount} WE signal${weCount===1?"":"s"}`,
+  });
+  $q("#spcVal").textContent = `CL ${st.cl.toFixed(2)}% · σ ${st.sd.toFixed(2)} · ${weCount} WE signal${weCount===1?"":"s"}`;
+  $q("#oocCount").textContent = `${res.outOfControl} beyond limits · ${weCount} WE signals`;
+
+  // known special causes (sample-index keyed)
+  const causes7 = {
+    7:  { t:"D01 bearing-noise event", d:"X4152 RHS acoustic escape — containment started, see CL-2213" },
+    16: { t:"D02 torque drift window", d:"DC bit wear beyond PM interval — FACA FA-097 corrective" },
+    23: { t:"D04 press-fit OOS spike", d:"Pillow-stator force window widening — FACA FA-101" },
+    28: { t:"Recovery after sort", d:"Containment effective — back within limits" },
+  };
+
+  // consolidated signal list: ±3σ violations first, then WE rules
+  const signals = [];
+  res.ooc.forEach(i => signals.push({ i, sev:"bad", label:"Beyond ±3σ", note:(causes7[i]||{}).t || "Investigate immediately" }));
+  Object.keys(we).map(Number).sort((a,b)=>a-b).forEach(i => {
+    if (res.ooc.includes(i)) return;
+    signals.push({ i, sev:"warn", label:we[i].map(r=>WE_NAMES[r]).join(" + "), note:"Early-warning pattern — review before it becomes a breach" });
+  });
+
+  // stat cards
+  const defects = DB.DEFECTS.filter(d => STATE.product==="ALL" || d.product===STATE.product);
+  const totalDef = defects.reduce((s,d)=>s+d.qty,0);
+  const vol = filteredProducts().reduce((s,p)=>s+p.vol.ytd,0) || 1;
+  const ppm = Math.round(totalDef / vol * 1e6);
+  const top = [...defects].sort((a,b)=>b.qty-a.qty)[0];
+  $q("#qStats").innerHTML = [
+    { name:"Cpk (lower spec)", val:cpk.toFixed(2), ico:"📏", kc:"var(--acc)", note:cpk>=1.33?"capable (≥1.33)":cpk>=1?"marginal":"not capable", cls:cpk>=1.33?"good":cpk>=1?"warn":"bad" },
+    { name:"Out-of-control pts", val:res.outOfControl, ico:"⚠", kc:"var(--bad)", note:"last 30 samples", cls:res.outOfControl?"bad":"good" },
+    { name:"Defect PPM", val:ppm.toLocaleString(), ico:"🔎", kc:"var(--pur)", note:"defects vs YTD volume", cls:"acc" },
+    { name:"Top defect", val:top ? top.qty : 0, ico:"🥇", kc:"var(--warn)", note:top ? `${top.code} ${top.name}` : "—", cls:top&&top.sev==="Critical"?"bad":"warn" },
+  ].map(d => `
+    <div class="card kpi">
+      <div class="kpi-top"><span class="kpi-ico" style="--kc:${d.kc}">${d.ico}</span><span class="pill ${d.cls}">${d.name.split(" ")[0]==="Cpk"?"SPC":"30d"}</span></div>
+      <div class="kpi-name">${d.name}</div>
+      <div class="kpi-val" style="font-size:22px">${d.val}</div>
+      <div class="kpi-note">${esc(d.note)}</div>
+    </div>`).join("");
+
+  $q("#oocList").innerHTML = signals.length ? signals.map(s => {
+    const c = causes7[s.i];
+    return `<div class="item" style="cursor:default">
+      <div class="item-ico" style="background:var(--${s.sev}-soft);color:var(--${s.sev})">${s.sev==="bad"?"⚠":"∿"}</div>
+      <div class="item-body"><div class="item-title">${labels[s.i]} · ${data[s.i]}% — ${esc(s.label)}</div><div class="item-sub">${c ? esc(c.t) + " — " + esc(c.d) : esc(s.note)}</div></div>
+    </div>`;
+  }).join("") : `<div class="empty">Process in control — no signals</div>`;
+
+  // pareto + donut
+  CHARTS.pareto($q("#pareto"), [...defects].sort((a,b)=>b.qty-a.qty).slice(0,8).map(d => ({ label:`${d.code} ${d.name}`, v:d.qty })));
+  const byProc = {};
+  defects.forEach(d => byProc[d.process] = (byProc[d.process]||0) + d.qty);
+  const segs = DB.PROCESSES.filter(p=>byProc[p.id]).map((p,i) => ({ label:p.name, v:byProc[p.id], color:["var(--bad)","var(--warn)","var(--acc)","var(--pur)"][i%4] }));
+  CHARTS.donut($q("#defDonut"), segs, totalDef, "defects");
+  $q("#defLeg").innerHTML = segs.map(s=>`<div class="dl"><i style="width:9px;height:9px;border-radius:3px;display:inline-block;background:${s.color}"></i>${esc(s.label)}<b>${s.v}</b></div>`).join("");
+}
+
+/* ---------- GANTT ---------- */
+function viewGantt(){
+  return `
+  <div class="card">
+    <div class="card-head">
+      <h3>NPI project timeline</h3>
+      <span class="sub">
+        <span class="seg" id="ganttMode">
+          <button data-mode="lots" class="${STATE.ganttMode!=="product"?"on":""}">By lot</button>
+          <button data-mode="product" class="${STATE.ganttMode==="product"?"on":""}">By product</button>
+        </span>
+        <span class="seg" id="ganttZoom">
+          <button data-zoom="day" class="${STATE.ganttZoom==="day"?"on":""}">Day</button>
+          <button data-zoom="week" class="${STATE.ganttZoom==="week"?"on":""}">Week</button>
+          <button data-zoom="month" class="${STATE.ganttZoom==="month"?"on":""}">Month</button>
+        </span>
+        <button class="mini-btn" id="todayBtn" title="Center on today">◉ Today</button>
+      </span>
+    </div>
+    <div class="card-head" style="margin-bottom:8px">
+      <span class="legend" id="ganttLegend"></span>
+      <span class="sub"><button class="mini-btn" id="addTask">＋ Add task</button></span>
+    </div>
+    <div class="gantt" id="ganttWrap"></div>
+  </div>
+  <div class="grid g-3" style="margin-top:14px" id="ganttStats"></div>`;
+}
+
+function ganttRows(){
+  /* scoped by product/stage/lot filters, returns [{key,label,sub,tasks,lot}] */
+  const rows = [];
+  if (STATE.ganttMode === "product"){
+    DB.PROJECTS
+      .filter(p => STATE.product==="ALL" || p.product===STATE.product)
+      .forEach(p => rows.push({ key:p.id, label:p.name, sub:p.owner, health:p.health, tasks:p.tasks, prj:p }));
+  } else {
+    const scopedLots = DB.LOTS.filter(l =>
+      (STATE.lot==="ALL" || l.id===STATE.lot) &&
+      (STATE.stage==="ALL" || l.stage===STATE.stage)
+    );
+    const activeLots = new Set(filteredProducts().flatMap(p => DB.PRODUCT_LOTS[p.id] || []));
+    const lots = scopedLots.filter(l => activeLots.has(l.id));
+    lots.forEach(l => {
+      const prods = DB.PRODUCTS.filter(p => (DB.PRODUCT_LOTS[p.id]||[]).includes(l.id)).map(p => p.id);
+      const tasks = DB.LOT_TASKS[l.id] || [];
+      rows.push({
+        key:l.id,
+        label:`${prods.join("/") || "—"} · ${l.id}`,
+        sub:`${l.stage} · ${DB.fmtW(l.units)} units`,
+        tasks, lot:l,
+      });
+    });
+  }
+  return rows;
+}
+
+const PHASE_COLOR = {
+  "Preparation":          "var(--warn)",
+  "MBO and Main build":   "var(--acc)",
+  "OQC":                  "var(--pur)",
+  "OK2S":                 "var(--pur)",
+  "Shipment":             "var(--good)",
+};
+
+function mountGantt(){
+  const wrap = $q("#ganttWrap");
+  const byLot = STATE.ganttMode !== "product";
+  const mode = $q("#ganttMode");
+  mode.querySelectorAll("button").forEach(b => b.onclick = () => {
+    STATE.ganttMode = b.dataset.mode;
+    setView("gantt");
+  });
+
+  const projects = DB.PROJECTS
+    .filter(p => STATE.product==="ALL" || p.product===STATE.product)
+    .filter(p => {
+      if (STATE.ganttGroup==="all") return true;
+      if (STATE.ganttGroup==="npi") return ["X4155","X4156","X4153"].includes(p.product);
+      return !["X4155","X4156","X4153"].includes(p.product);
+    });
+  const rows = ganttRows();
+
+  $q("#ganttLegend").innerHTML = byLot
+    ? Object.entries(PHASE_COLOR).map(([n,c]) => `<span><i style="background:${c}"></i>${n}</span>`).join("")
+    : `<span><i style="background:var(--acc)"></i>EVT</span><span><i style="background:var(--pur)"></i>DVT</span><span><i style="background:var(--good)"></i>PVT/MP</span><span><i style="background:var(--warn)"></i>At risk</span>`;
+
+  const allDates = rows.flatMap(r => r.tasks.flatMap(t => [t.s, t.e])).filter(Boolean);
+  if (!allDates.length){ wrap.innerHTML = `<div class="empty">No tasks in scope</div>`; $q("#ganttStats").innerHTML = ""; return; }
+  const min = allDates.reduce((a,b)=>a<b?a:b);
+  const max = allDates.reduce((a,b)=>a>b?a:b);
+
+  /* zoom: px-per-day drives ticks, label density and scroll width */
+  const PX_PER_DAY = { day: 34, week: 11, month: 4.2 }[STATE.ganttZoom] || 11;
+  const DAY = 864e5;
+  const d0 = new Date(min+"T00:00:00");
+  const d1 = new Date(max+"T00:00:00");
+  const totalDays = Math.max(1, Math.round((d1-d0)/DAY) + 1);
+  const trackW = Math.max(760, Math.round(totalDays * PX_PER_DAY));
+  const x = iso => ((new Date(iso+"T00:00:00").getTime() - d0.getTime()) / DAY) * (PX_PER_DAY);
+
+  /* ticks per zoom level */
+  let ticks = [];
+  const DOW = ["S","M","T","W","T","F","S"];
+  if (STATE.ganttZoom === "day"){
+    for (let t = d0.getTime(); t <= d1.getTime(); t += DAY){
+      const dt = new Date(t);
+      ticks.push({ pct: (t - d0.getTime())/DAY * PX_PER_DAY,
+        label: dt.getDate() === 1 || t === d0.getTime()
+          ? dt.toLocaleString("en",{month:"short",day:"numeric"}) : String(dt.getDate()),
+        sub: DOW[dt.getDay()],
+        wknd: dt.getDay() === 0 || dt.getDay() === 6,
+        major: dt.getDay() === 1 });
+    }
+  } else if (STATE.ganttZoom === "week"){
+    const first = new Date(d0); first.setDate(first.getDate() - ((first.getDay()+6)%7)); // back to Monday
+    for (let t = first.getTime(); t <= d1.getTime()+7*DAY; t += 7*DAY){
+      const dt = new Date(t);
+      if (t + 7*DAY < d0.getTime()) continue;
+      const lbl = dt.getDate() <= 7 ? dt.toLocaleString("en",{month:"short"}) : String(dt.getDate());
+      ticks.push({ pct: (t - d0.getTime())/DAY * PX_PER_DAY, label: lbl, major: dt.getDate() <= 7 });
+    }
+  } else {
+    const m = new Date(d0); m.setDate(1);
+    while (m.getTime() <= d1.getTime()+31*DAY){
+      if (m.getTime() + 31*DAY >= d0.getTime()) ticks.push({ pct: (m.getTime()-d0.getTime())/DAY*PX_PER_DAY,
+        label: m.toLocaleString("en",{month:"short"}), major: m.getMonth()%3===0 });
+      m.setMonth(m.getMonth()+1);
+    }
+  }
+  ticks = ticks.filter(t => t.pct >= -PX_PER_DAY*8 && t.pct <= trackW + PX_PER_DAY*8);
+
+  const todayX = (new Date(isoOf(DB.TODAY)+"T00:00:00").getTime() - d0.getTime())/DAY * PX_PER_DAY;
+  const stageColor = { P1:"var(--warn)", P2:"var(--warn)", EVT:"var(--acc)", DVT:"var(--pur)", PVT:"var(--good)" };
+
+  const gridHtml = (withLabels) => ticks.map(t => {
+    const wknd = t.wknd ? " tick-wknd" : "";
+    return `<i class="${t.major?"tick-major":""}${t.wknd?" tick-wknd-line":""}" style="left:${t.pct.toFixed(1)}px"></i>` +
+      (withLabels
+        ? (t.sub
+          ? `<span class="tick-date${t.major?" tick-major-lbl":""}${wknd}" style="left:${t.pct.toFixed(1)}px">${t.label}</span>` +
+            `<span class="tick-dow${wknd}" style="left:${t.pct.toFixed(1)}px">${t.sub}</span>`
+          : `<span class="${t.major?"tick-major-lbl":""}${wknd}" style="left:${t.pct.toFixed(1)}px">${t.label}</span>`)
+        : "");
+  }).join("");
+
+  const dayZoom = STATE.ganttZoom === "day";
+  wrap.innerHTML = `<div class="gantt-scroll" id="ganttScroll" style="padding-top:${dayZoom?34:16}px">
+    <div class="gantt-inner" style="width:${trackW}px">
+    <div class="gantt-row" style="border-bottom:2px solid var(--line2)">
+      <div class="g-label"><b style="font-size:11px;color:var(--txt3)">${byLot?"LOT":"PROJECT"}</b></div>
+      <div class="g-track" style="height:${dayZoom?42:26}px">
+        <div class="g-grid">${gridHtml(true)}</div>
+      </div>
+    </div>
+    ${rows.map(r => {
+      const phasesDone = byLot ? Math.round(r.tasks.reduce((s,t)=>s+t.done,0)/Math.max(1,r.tasks.length)) : null;
+      const barColor = t => byLot
+        ? (t.done>=100 ? PHASE_COLOR[t.name] || "var(--good)" : PHASE_COLOR[t.name] || "var(--acc)")
+        : (t.flag==="claim" ? "var(--bad)" : (r.health==="amber" && t.done>0 && t.done<100) ? "var(--warn)" : stageColor[t.stage] || "var(--acc)");
+      return `
+      <div class="gantt-row" style="padding:9px 0">
+        <div class="g-label">
+          <b>${esc(r.label)}</b>
+          <span>${esc(r.sub)}${byLot && phasesDone!=null ? ` · <span class="pill ${phasesDone>=100?"good":phasesDone>0?"acc":"warn"}" style="font-size:9px;padding:1px 7px">${phasesDone}%</span>` : byLot ? "" : r.health ? ` · <span class="pill ${r.health==="green"?"good":r.health==="amber"?"warn":"bad"}" style="font-size:9px;padding:1px 7px">${r.health}</span>` : ""}</span>
+        </div>
+        <div class="g-track">
+          <div class="g-grid">${gridHtml(false)}</div>
+          <div class="g-today" style="left:${todayX.toFixed(1)}px"></div>
+          ${r.tasks.map((t, ti) => {
+            const l = x(t.s), rr = x(t.e);
+            const w = Math.max(rr-l, PX_PER_DAY*0.9);
+            const color = barColor(t);
+            const showTxt = w > 30;
+            return `<div class="g-bar ${byLot?"g-bar-lot":""}" data-row="${r.key}" data-phase-idx="${ti}" data-task="${esc(t.name)}"
+              style="left:${l.toFixed(1)}px;width:${w.toFixed(1)}px;background:${color}"
+              title="${esc(r.label)} · ${esc(t.name)} · ${t.s} → ${t.e} · ${t.done}% complete">${showTxt && t.done>0 ? t.done+"%" : ""}</div>`;
+          }).join("")}
+        </div>
+      </div>`;
+    }).join("")}
+    </div>
+  </div>`;
+
+  /* scroll position: keep center date across zoom changes */
+  const scroller = $q("#ganttScroll");
+  const center = STATE.ganttCenter || isoOf(DB.TODAY);
+  const centerPx = (new Date(center+"T00:00:00").getTime() - d0.getTime())/DAY * PX_PER_DAY;
+  scroller.scrollLeft = Math.max(0, centerPx - scroller.clientWidth/2);
+  scroller.addEventListener("scroll", () => {
+    STATE.ganttCenter = isoOf(new Date(d0.getTime() + (scroller.scrollLeft + scroller.clientWidth/2)/PX_PER_DAY*DAY));
+  }, { passive:true });
+  scroller.addEventListener("wheel", e => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    const order = ["month","week","day"];
+    const idx = order.indexOf(STATE.ganttZoom);
+    const next = e.deltaY < 0 ? Math.min(2, idx+1) : Math.max(0, idx-1);
+    if (next !== idx){ STATE.ganttZoom = order[next]; setView("gantt"); }
+  }, { passive:false });
+
+  const zoomSeg = $q("#ganttZoom");
+  zoomSeg.querySelectorAll("button").forEach(b => b.onclick = () => { STATE.ganttZoom = b.dataset.zoom; setView("gantt"); });
+  $q("#todayBtn").onclick = () => { STATE.ganttCenter = isoOf(DB.TODAY); setView("gantt"); };
+
+  const addBtn = $q("#addTask"); if (addBtn) addBtn.onclick = () => openTaskEditor(null);
+
+  $q$("#ganttWrap .g-bar").forEach(bar => bar.onclick = () => {
+    const rowKey = bar.dataset.row;
+    const idx = +bar.dataset.phaseIdx;
+    if (byLot){
+      const lot = DB.LOTS.find(l=>l.id===rowKey);
+      const phases = DB.LOT_TASKS[rowKey] || [];
+      if (lot && phases[idx]) openLotPhaseEditor(lot, phases[idx]);
+    } else {
+      const prj = DB.PROJECTS.find(p=>p.id===rowKey);
+      const task = prj && prj.tasks.find(t=>t.name===bar.dataset.task);
+      if (prj && task) openTaskEditor(prj, task);
+    }
+  });
+
+  const totalTasks = rows.flatMap(r=>r.tasks);
+  const done = totalTasks.filter(t=>t.done===100).length;
+  const active = totalTasks.filter(t=>t.done>0&&t.done<100).length;
+  const upcoming = totalTasks.filter(t=>t.done===0).length;
+  $q("#ganttStats").innerHTML = `
+    <div class="card"><div class="card-head"><h3>${byLot?"Phases complete":"Tasks complete"}</h3></div><div class="kpi-val" style="--kc:var(--good)">${done}</div><div class="kpi-note">of ${totalTasks.length} planned</div></div>
+    <div class="card"><div class="card-head"><h3>Active</h3></div><div class="kpi-val" style="--kc:var(--acc)">${active}</div><div class="kpi-note">in flight this window</div></div>
+    <div class="card"><div class="card-head"><h3>Upcoming</h3></div><div class="kpi-val" style="--kc:var(--warn)">${upcoming}</div><div class="kpi-note">not started</div></div>`;
+}
+
+/* ---------- lot phase editor ---------- */
+function openLotPhaseEditor(lot, phase){
+  openModal(`
+    <h2>${lot.id} — ${esc(phase.name)}</h2>
+    <div class="modal-grid" style="margin-top:12px">
+      <div class="stat-box"><span>Stage</span><b>${lot.stage}</b></div>
+      <div class="stat-box"><span>Lot units</span><b>${DB.fmtW(lot.units)}</b></div>
+      <div class="stat-box"><span>Window</span><b style="font-size:13px">${phase.s} → ${phase.e}</b></div>
+      <div class="stat-box"><span>Complete</span><b>${phase.done}%</b></div>
+    </div>
+    <div class="bar" style="margin:10px 0 14px"><i class="${phase.done>=100?"g":phase.done>0?"w":"b"}" style="width:${phase.done}%"></i></div>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
+      <label class="fld"><span>Start</span><input id="lpStart" type="date" value="${phase.s}"/></label>
+      <label class="fld"><span>End</span><input id="lpEnd" type="date" value="${phase.e}"/></label>
+      <label class="fld"><span>Done %</span><input id="lpDone" type="number" min="0" max="100" value="${phase.done}"/></label>
+      <button class="btn-primary" id="lpSave">Save</button>
+    </div>
+    <div class="item-sub">Flow: ${DB.LOT_PHASES.join(" → ")}. Phase completion feeds the lot's overall progress in the Gantt and shipment readiness.</div>
+  `);
+  $q("#lpSave").onclick = () => {
+    const phases = (DB.LOT_TASKS[lot.id] || []).map(t =>
+      t.name === phase.name ? {
+        ...t,
+        s: $q("#lpStart").value,
+        e: $q("#lpEnd").value,
+        done: Math.max(0, Math.min(100, +$q("#lpDone").value || 0)),
+      } : t
+    );
+    if (phases.some(t => t.e < t.s)){ toast("End date must be on or after start date", "warn"); return; }
+    DB.updateLotTasks(lot.id, phases);
+    closeModal(); toast(`<b>${lot.id}</b> · ${esc(phase.name)} updated`, "good");
+    setView("gantt");
+  };
+}
+
+function updateTask(prjId, taskName, patch){
+  const prj = DB.PROJECTS.find(p=>p.id===prjId);
+  if (!prj) return false;
+  const tasks = prj.tasks.map(t => t.name===taskName ? { ...t, ...patch } : t);
+  return DB.updateProjectTasks(prjId, tasks);
+}
+function deleteTask(prjId, taskName){
+  const prj = DB.PROJECTS.find(p=>p.id===prjId);
+  if (!prj) return false;
+  return DB.updateProjectTasks(prjId, prj.tasks.filter(t => t.name!==taskName));
+}
+function addTask(prjId, task){
+  const prj = DB.PROJECTS.find(p=>p.id===prjId);
+  if (!prj) return false;
+  return DB.updateProjectTasks(prjId, [...prj.tasks, task]);
+}
+function openTaskEditor(prj, task){
+  const isNew = !task;
+  const projects = DB.PROJECTS;
+  const t = task || { name:"", stage: STATE.stage!=="ALL" ? STATE.stage : "DVT",
+    s: new Date().toISOString().slice(0,10),
+    e: new Date(Date.now()+14*864e5).toISOString().slice(0,10), done:0, flag:"" };
+  openModal(`
+    <h2>${isNew ? "Add Gantt task" : "Edit task — " + esc(t.name)}</h2>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
+      ${isNew ? `<label class="fld"><span>Project</span>
+        <select id="tePrj">${projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></label>` : ""}
+      <label class="fld grow"><span>Task name</span><input id="teName" value="${esc(t.name)}" placeholder="e.g. DVT build 3"/></label>
+      <label class="fld"><span>Stage</span>
+        <select id="teStage">${DB.STAGES.map(s=>`<option ${t.stage===s?"selected":""}>${s}</option>`).join("")}</select></label>
+      <label class="fld"><span>Start</span><input id="teStart" type="date" value="${t.s}"/></label>
+      <label class="fld"><span>End</span><input id="teEnd" type="date" value="${t.e}"/></label>
+      <label class="fld"><span>Done %</span><input id="teDone" type="number" min="0" max="100" value="${t.done}"/></label>
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      ${isNew ? "" : `<button class="mini-btn" id="teDelete">🗑 Delete task</button>`}
+      <span style="flex:1"></span>
+      <button class="btn-primary" id="teSave">${isNew ? "Add task" : "Save"}</button>
+    </div>
+  `);
+  $q("#teSave").onclick = () => {
+    const prjId = isNew ? $q("#tePrj").value : prj.id;
+    const patch = {
+      name: $q("#teName").value.trim(),
+      stage: $q("#teStage").value,
+      s: $q("#teStart").value,
+      e: $q("#teEnd").value,
+      done: Math.max(0, Math.min(100, +$q("#teDone").value || 0)),
+    };
+    if (!patch.name){ toast("Task name is required", "warn"); return; }
+    if (patch.e < patch.s){ toast("End date must be on or after start date", "warn"); return; }
+    if (isNew){ addTask(prjId, patch); toast(`Task <b>${esc(patch.name)}</b> added`, "good"); }
+    else { updateTask(prjId, t.name, patch); toast(`Task <b>${esc(patch.name)}</b> updated`, "good"); }
+    closeModal(); setView("gantt"); refreshBadges();
+  };
+  const del = $q("#teDelete");
+  if (del) del.onclick = () => {
+    deleteTask(prj.id, t.name);
+    closeModal(); toast(`Task <b>${esc(t.name)}</b> deleted`, "warn"); setView("gantt"); refreshBadges();
+  };
+}
+
+/* ---------- FACA ---------- */
+function facaListHTML(){
+  const cls = s => s==="Overdue"?"bad":s==="In Review"?"acc":s==="Closed"?"good":"warn";
+  return DB.FACA.filter(f=>STATE.product==="ALL"||f.product===STATE.product).map(f => `
+    <div class="item" data-faca="${f.id}">
+      <div class="item-ico" style="background:var(--pur-soft);color:var(--pur)">${f.ico}</div>
+      <div class="item-body">
+        <div class="item-title">${f.id} · ${esc(f.title)}</div>
+        <div class="item-sub">${f.product} · ${f.stage} · ${esc(f.owner)} · due ${f.due}</div>
+      </div>
+      <div class="item-meta">
+        <span class="pill ${cls(f.status)}">${f.status}</span>
+        <span class="mono" style="font-size:10.5px;color:var(--txt2)">${f.progress}%</span>
+      </div>
+    </div>`).join("") || `<div class="empty">No FACA actions for current filter</div>`;
+}
+
+function viewFaca(){
+  return `
+  <div class="grid g-32">
+    <div class="card" style="padding:6px 10px"><div class="table-wrap" style="border:none">${facaListHTML()}</div></div>
+    <div class="card">
+      <div class="card-head"><h3>Status mix</h3></div>
+      <div class="donut-wrap">
+        <div class="donut" id="facaDonut"></div>
+        <div class="donut-leg" id="facaLeg"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function mountFaca(){
+  const items = DB.FACA.filter(f=>STATE.product==="ALL"||f.product===STATE.product);
+  const mix = [
+    { label:"Open",       v:items.filter(f=>f.status==="Open").length,      color:"var(--warn)" },
+    { label:"In Review",  v:items.filter(f=>f.status==="In Review").length, color:"var(--acc)" },
+    { label:"Overdue",    v:items.filter(f=>f.status==="Overdue").length,   color:"var(--bad)" },
+    { label:"Closed",     v:items.filter(f=>f.status==="Closed").length,    color:"var(--good)" },
+  ].filter(s=>s.v>0);
+  CHARTS.donut($q("#facaDonut"), mix, items.length, "actions");
+  $q("#facaLeg").innerHTML = mix.map(s=>`<div class="dl"><i style="width:9px;height:9px;border-radius:3px;display:inline-block;background:${s.color}"></i>${s.label}<b>${s.v}</b></div>`).join("");
+  $q$("#viewArea [data-faca]").forEach(el => el.onclick = () => {
+    const f = DB.FACA.find(x=>x.id===el.dataset.faca);
+    if (f) openFacaEditor(f.id);
+  });
+}
+
+/* ---------- FACA editor ---------- */
+function openFacaEditor(id){
+  const f = DB.FACA.find(x=>x.id===id);
+  openModal(`
+    <h2>${f.id} — ${esc(f.title)}</h2>
+    <div class="modal-grid" style="margin-top:12px">
+      <div class="stat-box"><span>Product</span><b>${f.product}</b></div>
+      <div class="stat-box"><span>Stage</span><b>${f.stage}</b></div>
+      <div class="stat-box"><span>Owner</span><b style="font-size:14px">${esc(f.owner)}</b></div>
+      <div class="stat-box"><span>Due</span><b>${f.due}</b></div>
+      <div class="stat-box"><span>Process</span><b style="font-size:13px">${esc((DB.PROCESSES.find(p=>p.id===f.process)||{}).name||f.process)}</b></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:6px 0 14px">
+      <label class="fld"><span>Status</span>
+        <select id="feStatus">${["Open","In Review","Overdue","Closed"].map(s=>`<option ${f.status===s?"selected":""}>${s}</option>`).join("")}</select>
+      </label>
+      <label class="fld"><span>Progress %</span>
+        <input id="feProgress" type="number" min="0" max="100" value="${f.progress}"/>
+      </label>
+      <button class="btn-primary" id="feSave">Save</button>
+    </div>
+    <div class="bar" style="margin:6px 0 14px"><i class="${f.status==="Overdue"?"b":f.progress>=80?"g":"w"}" style="width:${f.progress}%"></i></div>
+    <div class="item-sub">Discipline: 8D-linked corrective action tracked at the FACA committee. Escalation path: process owner → NPI PM → BU quality head.</div>
+  `);
+  $q("#feSave").onclick = async () => {
+    const patch = { status: $q("#feStatus").value, progress: Math.max(0, Math.min(100, +$q("#feProgress").value || 0)) };
+    try {
+      await DataHub.updateFaca(f.id, patch);
+      closeModal(); toast(`<b>${f.id}</b> updated — ${patch.status}, ${patch.progress}%`, "good");
+      setView(STATE.view); refreshBadges(); buildTicker();
+    } catch(e){ toast("Save failed: " + esc(e.message || e), "bad"); }
+  };
+}
+
+/* ---------- CLAIMS ---------- */
+function claimsTableHTML(productFilter){
+  const rows = DB.CLAIMS
+    .filter(c => (productFilter ? c.product===productFilter : STATE.product==="ALL" || c.product===STATE.product))
+    .filter(c => STATE.side==="ALL" || c.side===STATE.side)
+    .map(c => {
+      const sevCls = c.severity==="Critical"?"bad":c.severity==="Major"?"warn":"acc";
+      const stCls  = c.status==="Containment"?"bad":c.status==="Root Cause"?"warn":"acc";
+      return `<tr data-claim="${c.id}">
+        <td class="mono"><b>${c.id}</b></td>
+        <td class="mono">${c.product}</td>
+        <td>${c.side}</td>
+        <td>${esc(c.customer)}</td>
+        <td><span class="pill ${sevCls}">${c.severity}</span></td>
+        <td><span class="pill ${stCls}">${c.status}</span></td>
+        <td class="trunc" title="${esc(c.issue)}">${esc(c.issue)}</td>
+        <td class="num">${c.qty}</td>
+        <td>${esc(c.owner)}</td>
+        <td class="mono">${c.eta}</td>
+      </tr>`;
+    }).join("");
+  return `<table>
+    <thead><tr><th>Claim</th><th>Product</th><th>Side</th><th>Customer</th><th>Severity</th><th>Status</th><th>Issue</th><th>Qty</th><th>Owner</th><th>ETA</th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="10" class="empty">No claims match current filters</td></tr>`}</tbody>
+  </table>`;
+}
+
+function viewClaims(){
+  return `
+  <div class="card" style="padding:6px 10px">
+    <div class="card-head" style="padding:10px 6px 4px">
+      <h3>Claim register</h3>
+      <span class="sub">
+        <span class="pill bad">${DB.CLAIMS.length} open</span>
+        <button class="mini-btn" id="exportClaims">⬇ CSV</button>
+        <button class="btn-primary" id="newClaim" style="margin-left:4px">＋ New claim</button>
+      </span>
+    </div>
+    <div class="table-wrap" style="border:none">${claimsTableHTML()}</div>
+  </div>`;
+}
+
+function mountClaims(){
+  const eb = $q("#exportClaims"); if (eb) eb.onclick = exportClaims;
+  const nb = $q("#newClaim"); if (nb) nb.onclick = openNewClaimForm;
+  $q$("#viewArea [data-claim]").forEach(el => el.onclick = () => {
+    const c = DB.CLAIMS.find(x=>x.id===el.dataset.claim);
+    if (c) openClaimModal(c.id);
+  });
+}
+
+function openClaimModal(id){
+  const c = DB.CLAIMS.find(x=>x.id===id);
+  const sevCls = c.severity==="Critical"?"bad":c.severity==="Major"?"warn":"acc";
+  openModal(`
+    <h2>${c.id} — <span class="pill ${sevCls}" style="vertical-align:2px">${c.severity}</span></h2>
+    <div class="modal-grid" style="margin-top:12px">
+      <div class="stat-box"><span>Product</span><b>${c.product}</b></div>
+      <div class="stat-box"><span>Side</span><b>${c.side}</b></div>
+      <div class="stat-box"><span>Customer</span><b style="font-size:14px">${esc(c.customer)}</b></div>
+      <div class="stat-box"><span>Opened</span><b style="font-size:13px">${c.opened}</b></div>
+      <div class="stat-box"><span>Qty affected</span><b>${c.qty}</b></div>
+      <div class="stat-box"><span>RMA</span><b>${c.rma}</b></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:6px 0 14px">
+      <label class="fld"><span>Status</span>
+        <select id="ceStatus">${["Containment","Root Cause","Verified","Monitoring","Closed"].map(s=>`<option ${c.status===s?"selected":""}>${s}</option>`).join("")}</select>
+      </label>
+      <label class="fld"><span>ETA</span><input id="ceEta" type="date" value="${c.eta}"/></label>
+      <label class="fld grow"><span>Corrective action</span><input id="ceCa" value="${esc(c.ca)}"/></label>
+      <button class="btn-primary" id="ceSave">Save</button>
+    </div>
+    <div class="item-title" style="margin:8px 0 4px">Issue</div>
+    <div class="item-sub" style="font-size:12.5px;color:var(--txt)">${esc(c.issue)}</div>
+    <div class="item-title" style="margin:14px 0 4px">Containment</div>
+    <div class="item-sub" style="font-size:12.5px;color:var(--txt)">${esc(c.containment)}</div>
+    <div class="item-title" style="margin:14px 0 4px">8D progress</div>
+    <div class="item-sub" style="font-size:12.5px;color:var(--txt)"><b>Root cause:</b> ${esc(c.root)}<br/><b>Preventive action:</b> ${esc(c.pa)}</div>
+  `);
+  $q("#ceSave").onclick = async () => {
+    const patch = { status: $q("#ceStatus").value, eta: $q("#ceEta").value, ca: $q("#ceCa").value };
+    try {
+      await DataHub.updateClaim(c.id, patch);
+      closeModal(); toast(`<b>${c.id}</b> updated`, "good");
+      setView(STATE.view); refreshBadges(); buildTicker();
+    } catch(e){ toast("Save failed: " + esc(e.message || e), "bad"); }
+  };
+}
+
+function openNewClaimForm(){
+  openModal(`
+    <h2>Log new customer claim</h2>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
+      <label class="fld"><span>Product</span>
+        <select id="ncProduct">${DB.PRODUCTS.map(p=>`<option>${p.id}</option>`).join("")}</select>
+      </label>
+      <label class="fld"><span>Side</span>
+        <select id="ncSide"><option>RHS</option><option>LHS</option></select>
+      </label>
+      <label class="fld"><span>Severity</span>
+        <select id="ncSeverity"><option>Critical</option><option selected>Major</option><option>Minor</option></select>
+      </label>
+      <label class="fld"><span>Qty affected</span><input id="ncQty" type="number" min="1" value="1"/></label>
+      <label class="fld grow"><span>Customer</span><input id="ncCustomer" placeholder="e.g. NovaServe"/></label>
+      <label class="fld grow"><span>Owner</span><input id="ncOwner" placeholder="e.g. J. Tan"/></label>
+    </div>
+    <label class="fld" style="display:block;margin-bottom:12px"><span>Issue description</span>
+      <textarea id="ncIssue" rows="3" style="width:100%" placeholder="What failed, where, how detected…"></textarea>
+    </label>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="mini-btn" id="ncCancel">Cancel</button>
+      <button class="btn-primary" id="ncSave">Log claim</button>
+    </div>
+  `);
+  $q("#ncCancel").onclick = closeModal;
+  $q("#ncSave").onclick = async () => {
+    const customer = $q("#ncCustomer").value.trim();
+    const issue = $q("#ncIssue").value.trim();
+    if (!customer || !issue){ toast("Customer and issue description are required", "warn"); return; }
+    const id = "CL-" + (2300 + DB.CLAIMS.length + Math.floor(Math.random()*90));
+    const today = new Date().toISOString().slice(0,10);
+    const eta = new Date(Date.now() + 14*864e5).toISOString().slice(0,10);
+    const claim = {
+      id, product: $q("#ncProduct").value, side: $q("#ncSide").value,
+      customer, severity: $q("#ncSeverity").value, status: "Containment",
+      opened: today, issue, qty: Math.max(1, +$q("#ncQty").value || 1),
+      owner: $q("#ncOwner").value.trim() || "unassigned", eta, rma: "—",
+      containment: "Pending — define within 24h.", root: "under investigation", ca: "—", pa: "—",
+    };
+    try {
+      await DataHub.addClaim(claim);
+      closeModal(); toast(`<b>${id}</b> logged for ${esc(customer)}`, "good");
+      setView(STATE.view); refreshBadges(); buildTicker();
+    } catch(e){ toast("Save failed: " + esc(e.message || e), "bad"); }
+  };
+}
+
+/* ---------- SHIPMENTS ---------- */
+function viewShipments(){
+  return `
+  <div class="grid g-32">
+    <div class="card">
+      <div class="card-head"><h3>Commit vs actual — weekly</h3><span class="sub"><span class="pill acc">10 weeks</span><button class="mini-btn" id="exportShip">⬇ CSV</button></span></div>
+      <div id="shipChart"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Achievement</h3></div>
+      <div class="modal-grid" style="grid-template-columns:1fr 1fr">
+        <div class="stat-box"><span>10-wk avg</span><b id="shipAvg">—</b></div>
+        <div class="stat-box"><span>On-target weeks</span><b id="shipHit">—</b></div>
+      </div>
+      <div id="shipBars" style="display:flex;flex-direction:column;gap:10px;margin-top:8px"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px;padding:6px 10px">
+    <div class="table-wrap" style="border:none">
+      <table>
+        <thead><tr><th>Week</th><th>Commit</th><th>Actual</th><th>Achievement</th><th>Gap</th></tr></thead>
+        <tbody>
+          ${DB.SHIPMENTS.map(s => {
+            const pct = s.actual/s.commit*100;
+            const cls = pct>=100?"good":pct>=95?"warn":"bad";
+            return `<tr><td class="mono"><b>${s.week}</b></td>
+              <td class="num">${DB.fmtW(s.commit)}</td>
+              <td class="num">${DB.fmtW(s.actual)}</td>
+              <td><span class="pill ${cls}">${pct.toFixed(1)}%</span></td>
+              <td class="num" style="color:${pct>=100?"var(--good)":"var(--bad)"}">${s.actual-s.commit>=0?"+":""}${DB.fmtW(s.actual-s.commit)}</td></tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function mountShipments(){
+  const es = $q("#exportShip"); if (es) es.onclick = exportShipments;
+  const S = DB.SHIPMENTS;
+  const ratios = S.map(s => +(s.actual/s.commit*100).toFixed(1));
+  CHARTS.lineChart($q("#shipChart"), {
+    data: ratios, labels: S.map(s=>s.week), target: 100, fmt: v=>v.toFixed(0)+"%",
+  });
+  const avg = ratios.reduce((a,b)=>a+b,0)/ratios.length;
+  $q("#shipAvg").textContent = avg.toFixed(1)+"%";
+  $q("#shipHit").textContent = S.filter(s=>s.actual>=s.commit).length + " / " + S.length;
+  $q("#shipBars").innerHTML = S.slice(-5).map(s => {
+    const pct = s.actual/s.commit*100;
+    return `<div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <b>${s.week}</b><span class="mono">${DB.fmtW(s.actual)} / ${DB.fmtW(s.commit)}</span>
+      </div>
+      <div class="bar"><i class="${pct>=100?"g":pct>=95?"w":"b"}" style="width:${Math.min(100,pct).toFixed(0)}%"></i></div>
+    </div>`;
+  }).join("");
+}
+
+/* ============================================================
+   EXECUTIVE STAGE-GATE REPORT (print / PDF-ready)
+   ============================================================ */
+function openExecReport(){
+  const snap = kpiSnapshot();
+  const { labels, data } = DB.spcSamples();
+  const st = DB.spcStats(data);
+  const LSL = 93.0;
+  const cpk = (st.cl - LSL) / (3 * st.sd);
+  const we = DB.westernElectric(data, st);
+  const ooc = data.filter((v,i) => v > st.ucl || v < st.lcl).length;
+  const prods = filteredProducts();
+  const worstFpy = [...prods].sort((a,b) => DB.PRODUCT_KPI[a.id].fpy - DB.PRODUCT_KPI[b.id].fpy)[0];
+  const bestFpy  = [...prods].sort((a,b) => DB.PRODUCT_KPI[b.id].fpy - DB.PRODUCT_KPI[a.id].fpy)[0];
+  const critClaim = DB.CLAIMS.find(c => c.severity==="Critical") || DB.CLAIMS[0];
+  const overdueFaca = DB.FACA.filter(f => f.status==="Overdue");
+  const riskyTasks = DB.PROJECTS.flatMap(p => p.tasks.filter(t => t.done<100 && t.e && t.e < isoOf(DB.TODAY)).map(t => ({ p, t })));
+  const gate = g => `<span class="pill ${g==="green"?"good":g==="amber"?"warn":"bad"}">${g}</span>`;
+
+  openModal(`
+    <h2>Executive NPI report — ${isoOf(DB.TODAY)}</h2>
+    <div class="item-sub" style="margin:2px 0 14px">Auto-generated for stage-gate review · scope: ${STATE.product==="ALL"?"all products":STATE.product}${STATE.stage!=="ALL"?" · stage "+STATE.stage:""}${STATE.lot!=="ALL"?" · lot "+STATE.lot:""} · ${prods.length} product(s)</div>
+    <div class="modal-grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr))">
+      <div class="stat-box"><span>Blended FPY</span><b>${snap.fpy}%</b></div>
+      <div class="stat-box"><span>FY</span><b>${snap.fy}%</b></div>
+      <div class="stat-box"><span>UPH</span><b>${snap.uph}</b></div>
+      <div class="stat-box"><span>OEE</span><b>${snap.oee}%</b></div>
+      <div class="stat-box"><span>Shipment</span><b>${snap.ship}%</b></div>
+      <div class="stat-box"><span>Cpk (LSL 93)</span><b>${cpk.toFixed(2)}</b></div>
+      <div class="stat-box"><span>SPC signals</span><b>${ooc + Object.keys(we).length}</b></div>
+      <div class="stat-box"><span>Open claims</span><b>${DB.CLAIMS.length}</b></div>
+    </div>
+    <div class="item-title" style="margin:10px 0 6px">Health snapshot</div>
+    <table class="report-table">
+      <thead><tr><th>Product</th><th>Stage</th><th>FPY</th><th>FY</th><th>OEE</th><th>Ship</th><th>Gate</th></tr></thead>
+      <tbody>
+        ${prods.map(p => { const k = DB.PRODUCT_KPI[p.id]; const g = k.fpy>=96.5&&k.oee>=80?"green":k.fpy>=94?"amber":"red"; return `<tr>
+          <td class="mono"><b>${p.id}</b></td><td>${p.stage}</td><td class="num">${k.fpy.toFixed(1)}%</td><td class="num">${k.fy.toFixed(1)}%</td><td class="num">${k.oee.toFixed(0)}%</td><td class="num">${k.ship.toFixed(0)}%</td><td>${gate(g)}</td></tr>`; }).join("")}
+      </tbody>
+    </table>
+    <div class="item-title" style="margin:14px 0 6px">Watch items — needs attention at the gate</div>
+    <ul class="report-list">
+      ${worstFpy ? `<li><b>${worstFpy.id}</b> lowest FPY at ${DB.PRODUCT_KPI[worstFpy.id].fpy.toFixed(1)}% (vs 96.5 target) — ${esc(worstFpy.name)}</li>` : ""}
+      ${critClaim ? `<li><b>${critClaim.id}</b> ${esc(critClaim.severity)} claim — ${esc(critClaim.customer)} · containment ETA ${critClaim.eta}</li>` : ""}
+      ${overdueFaca.map(f => `<li><b>${f.id}</b> FACA overdue (${f.progress}%) — ${esc(f.title)}</li>`).join("")}
+      ${riskyTasks.map(({p,t}) => `<li><b>${p.product}</b> Gantt task overdue — ${esc(t.name)} (ended ${t.e} at ${t.done}%)</li>`).join("")}
+      ${ooc ? `<li><b>SPC:</b> ${ooc} point(s) beyond ±3σ — special cause unresolved</li>` : ""}
+      ${Object.keys(we).length ? `<li><b>SPC:</b> ${Object.keys(we).length} Western Electric signal(s) — early drift present</li>` : ""}
+    </ul>
+    <div class="item-title" style="margin:14px 0 6px">Wins to sustain</div>
+    <ul class="report-list">
+      ${bestFpy ? `<li><b>${bestFpy.id}</b> best FPY at ${DB.PRODUCT_KPI[bestFpy.id].fpy.toFixed(1)}%</li>` : ""}
+      ${snap.ship>=98 ? `<li>Shipment achievement sustained at <b>${snap.ship}%</b></li>` : ""}
+      <li>4 NPI lines live — P1 → PVT pipeline flowing (${DB.fmtW(DB.PIPELINE.reduce((s,p)=>s+p.units,0))} units in build)</li>
+    </ul>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="mini-btn" id="erCsv">⬇ Watch items CSV</button>
+      <button class="btn-primary" id="erPrint">🖨 Print / Save PDF</button>
+    </div>
+  `);
+  $q("#erPrint").onclick = () => window.print();
+  $q("#erCsv").onclick = () => exportCSV("fdb-watch-items.csv", [["Type","Ref","Detail"],
+    ...prods.map(p => { const k = DB.PRODUCT_KPI[p.id]; return ["Product", p.id, `FPY ${k.fpy}% · OEE ${k.oee}% · gate ${k.fpy>=96.5&&k.oee>=80?"green":k.fpy>=94?"amber":"red"}`]; })
+    .concat(overdueFaca.map(f => ["FACA", f.id, f.title]))
+    .concat(riskyTasks.map(({p,t}) => ["Gantt", p.product, `${t.name} overdue since ${t.e} at ${t.done}%`]))]);
+}
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+function openModal(html){
+  // extract leading <h2>…</h2> into the sticky header
+  let title = "";
+  const m = html.match(/^\s*<h2[^>]*>([\s\S]*?)<\/h2>/);
+  if (m){ title = m[1]; html = html.slice(m[0].length); }
+  $q("#modalRoot").innerHTML = `<div class="modal-back" id="modalBack"><div class="modal">
+    <div class="modal-head"><h2 style="flex:1">${title}</h2><button class="icon-btn" id="modalClose">✕</button></div>
+    <div class="modal-body">${html}</div>
+  </div></div>`;
+  $q("#modalBack").onclick = e => { if (e.target.id==="modalBack") closeModal(); };
+  $q("#modalClose").onclick = closeModal;
+  document.addEventListener("keydown", escListener);
+}
+function escListener(e){ if (e.key==="Escape") closeModal(); }
+function closeModal(){
+  $q("#modalRoot").innerHTML = "";
+  document.removeEventListener("keydown", escListener);
+}
+
+/* product modal */
+function openProductModal(pid){
+  const p = DB.PRODUCTS.find(x=>x.id===pid);
+  const k = DB.PRODUCT_KPI[pid];
+  const volPct = Math.min(100, p.vol.ytd/p.vol.target*100);
+  openModal(`
+    <h2>${p.id} — ${esc(p.name)}</h2>
+    <div class="modal-grid" style="margin-top:12px">
+      <div class="stat-box"><span>Customer</span><b style="font-size:14px">${esc(p.customer)}</b></div>
+      <div class="stat-box"><span>NPI stage</span><b>${p.stage}</b></div>
+      <div class="stat-box"><span>Side</span><b>${p.side}</b></div>
+      <div class="stat-box"><span>Line</span><b>${p.line}</b></div>
+      <div class="stat-box"><span>Lots</span><b style="font-size:13px">${(DB.PRODUCT_LOTS[p.id]||[]).join(" · ")}</b></div>
+      <div class="stat-box"><span>Mule</span><b>${p.mule}</b></div>
+      <div class="stat-box"><span>Ramp</span><b>${p.ramp}</b></div>
+      <div class="stat-box"><span>FPY</span><b>${k.fpy.toFixed(1)}%</b></div>
+      <div class="stat-box"><span>FY</span><b>${k.fy.toFixed(1)}%</b></div>
+      <div class="stat-box"><span>UPH</span><b>${k.uph}</b></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin:8px 0 4px">
+      <b>YTD volume</b><span class="mono">${DB.fmtW(p.vol.ytd)} / ${DB.fmtW(p.vol.target)} (${volPct.toFixed(0)}%)</span>
+    </div>
+    <div class="bar" style="margin-bottom:16px"><i class="${volPct>=100?"g":volPct>=90?"w":"b"}" style="width:${volPct.toFixed(0)}%"></i></div>
+    <div id="pmTrend" style="margin-bottom:6px"></div>
+    <div class="sec-head"><h2>Open items</h2><div class="rule"></div></div>
+    ${(DB.FACA.filter(f=>f.product===pid).map(f=>`<div class="item"><div class="item-ico" style="background:var(--pur-soft);color:var(--pur)">${f.ico}</div><div class="item-body"><div class="item-title">${f.id} · ${esc(f.title)}</div><div class="item-sub">${f.status} · due ${f.due}</div></div><span class="pill ${f.status==="Overdue"?"bad":"warn"}">${f.progress}%</span></div>`).join(""))
+    + (DB.CLAIMS.filter(c=>c.product===pid).map(c=>`<div class="item"><div class="item-ico" style="background:var(--bad-soft);color:var(--bad)">⚑</div><div class="item-body"><div class="item-title">${c.id} · ${esc(c.issue)}</div><div class="item-sub">${c.severity} · ${c.status} · ETA ${c.eta}</div></div></div>`).join(""))
+    || `<div class="empty">No open FACA or claims for ${pid}</div>`}
+  `);
+  CHARTS.lineChart($q("#pmTrend"), { data: k.fpys, labels: labelsFor(k.fpys, 28), fmt: v=>v.toFixed(1)+"%", target: 96.5 });
+}
+
+/* ============================================================
+   ROUTER
+   ============================================================ */
+function setView(v){
+  STATE.view = v;
+  $q$(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.view===v));
+  const meta = VIEWS[v];
+  $q("#viewTitle").textContent = meta.title;
+  $q("#viewSub").textContent = meta.sub;
+
+  const renderers = {
+    overview:  [viewOverview,  mountOverview],
+    products:  [viewProducts,  mountProducts],
+    processes: [viewProcesses, mountProcesses],
+    kpi:       [viewKpi,       mountKpi],
+    quality:   [viewQuality,   mountQuality],
+    gantt:     [viewGantt,     mountGantt],
+    faca:      [viewFaca,      mountFaca],
+    claims:    [viewClaims,    mountClaims],
+    shipments: [viewShipments, mountShipments],
+  };
+  const [htmlFn, mountFn] = renderers[v];
+  $q("#viewArea").innerHTML = htmlFn();
+  mountFn();
+  closeSidebarMobile();
+  window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+}
+
+/* ---------- segment controls ---------- */
+function buildSeg(el, items, key, allLabel){
+  el.innerHTML = `<button data-v="ALL" class="${STATE[key]==="ALL"?"on":""}">${allLabel}</button>` +
+    items.map(i => `<button data-v="${i}" class="${STATE[key]===i?"on":""}">${i}</button>`).join("");
+  el.querySelectorAll("button").forEach(b => b.onclick = () => {
+    STATE[key] = b.dataset.v;
+    el.querySelectorAll("button").forEach(x => x.classList.toggle("on", x===b));
+    setView(STATE.view);
+    toast(`${key === "stage" ? "Stage" : key === "side" ? "Side" : key === "line" ? "Line" : "Range"} → <b>${b.dataset.v==="ALL"?"All":b.dataset.v}</b>`);
+  });
+}
+function syncSegs(){
+  [["#stageSeg","stage"],["#sideSeg","side"],["#lineSeg","line"],["#rangeSeg","range"]].forEach(([sel,key]) => {
+    $q(sel).querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v===STATE[key]));
+  });
+  const ps = $q("#productSel"); if (ps) ps.value = STATE.product;
+  rebuildLotSelect();
+}
+
+/* ---------- ticker + live badges ---------- */
+function buildTicker(){
+  const items = DB.allAlerts().map(a =>
+    `<span class="t-${a.sev}">${a.sev==="bad"?"⚑":a.sev==="warn"?"⚠":"✓"} ${esc(a.txt)}</span>`
+  ).join("");
+  $q("#tickerTrack").innerHTML = items + items; // duplicate for seamless loop
+}
+function refreshBadges(){
+  const claims = DB.CLAIMS.length;
+  const faca = DB.FACA.filter(f=>f.status!=="Closed").length;
+  const atRisk = DB.PROJECTS.filter(p=>
+    p.health!=="green" || p.tasks.some(t => t.done<100 && t.e && t.e < isoOf(DB.TODAY))
+  ).length;
+  const alerts = DB.allAlerts().length;
+  const set = (sel, n) => { const el = $q(sel); if (el){ el.textContent = n; el.style.display = n ? "" : "none"; } };
+  set("#badgeAlerts", alerts);
+  set("#badgeAtRisk", atRisk);
+  set("#badgeFaca", faca);
+  const cb = $q("#badgeClaims");
+  if (cb){ cb.textContent = claims; cb.style.display = claims ? "" : "none"; }
+}
+
+/* ---------- sidebar mobile ---------- */
+function openSidebarMobile(){ $q("#sidebar").classList.add("open"); $q("#scrim").classList.add("show"); }
+function closeSidebarMobile(){ $q("#sidebar").classList.remove("open"); $q("#scrim").classList.remove("show"); }
+
+/* ---------- settings (data source) ---------- */
+function openSettings(){
+  openModal(`
+    <h2>Data source & settings</h2>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:12px 0">
+      <label class="fld"><span>Mode</span>
+        <select id="stMode"><option value="demo" ${DataHub.mode==="demo"?"selected":""}>Demo (local, persisted)</option><option value="rest" ${DataHub.mode==="rest"?"selected":""}>REST API</option></select>
+      </label>
+      <label class="fld grow"><span>Base URL (REST mode)</span><input id="stUrl" placeholder="https://mes.example.com/api" value="${esc(DataHub.baseUrl)}"/></label>
+      <button class="mini-btn" id="stTest">Test connection</button>
+    </div>
+    <div id="stNote" class="item-sub" style="margin-bottom:14px"></div>
+    <div class="item-title">REST contract</div>
+    <div class="item-sub" style="margin:6px 0 14px"><span class="mono">GET /health · PATCH /claims/:id · POST /claims · PATCH /faca/:id</span> — JSON bodies, standard status codes. In demo mode writes persist to <span class="mono">localStorage[${DB.LS_KEY}]</span>.</div>
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <button class="mini-btn" id="stReset">Reset local edits</button>
+      <button class="btn-primary" id="stSave">Save</button>
+    </div>
+  `);
+  $q("#stTest").onclick = async () => {
+    $q("#stNote").textContent = "Testing…";
+    const r = await DataHub.testConnection();
+    $q("#stNote").innerHTML = (r.ok ? "✅ " : "❌ ") + esc(r.note);
+  };
+  $q("#stReset").onclick = () => {
+    DB.resetOverrides();
+    toast("Local edits reset to demo baseline", "warn");
+    setView(STATE.view);
+  };
+  $q("#stSave").onclick = () => {
+    DataHub.mode = $q("#stMode").value;
+    DataHub.baseUrl = $q("#stUrl").value.trim();
+    try { localStorage.setItem("fdb-dh-mode", DataHub.mode); localStorage.setItem("fdb-dh-url", DataHub.baseUrl); } catch(e){}
+    closeModal();
+    toast(`Data source → <b>${DataHub.mode}</b>${DataHub.baseUrl ? " · " + esc(DataHub.baseUrl) : ""}`, "good");
+  };
+}
+
+/* ---------- boot ---------- */
+function boot(){
+  initTheme();
+  buildProductSelect();
+  rebuildLotSelect();
+  buildSeg($q("#stageSeg"), DB.STAGES, "stage", "All");
+  buildSeg($q("#sideSeg"),  DB.SIDES,  "side",  "All");
+  buildSeg($q("#lineSeg"),  DB.LINES,  "line",  "All");
+  buildSeg($q("#rangeSeg"), DB.RANGES, "range", "");
+
+  $q$(".nav-item").forEach(b => b.onclick = () => setView(b.dataset.view));
+  $q("#menuBtn").onclick = openSidebarMobile;
+  $q("#sidebarClose").onclick = closeSidebarMobile;
+  $q("#scrim").onclick = closeSidebarMobile;
+  $q("#themeBtn").onclick = () => applyTheme(document.documentElement.dataset.theme==="dark" ? "light" : "dark");
+  $q("#settingsBtn").onclick = openSettings;
+  $q("#reportBtn").onclick = openExecReport;
+
+  buildTicker();
+
+  // delegate product row clicks
+  $q("#viewArea").addEventListener("click", e => {
+    const tr = e.target.closest("tr[data-prod]");
+    if (tr) openProductModal(tr.dataset.prod);
+  });
+
+  // footer bars + clock + live sync
+  const bars = $q("#footBars");
+  bars.innerHTML = Array.from({length:12}, () => `<i style="height:${20+Math.round(Math.random()*80)}%"></i>`).join("");
+  setInterval(() => {
+    bars.innerHTML = Array.from({length:12}, () => `<i style="height:${20+Math.round(Math.random()*80)}%"></i>`).join("");
+    $q("#lastSync").textContent = "synced " + new Date().toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    // subtle live jitter on overview chart values
+    if (STATE.view === "overview" && Math.random() < 0.34){
+      const s = DB.KPI_SERIES.fpy;
+      s[s.length-1] = +(s.at(-1) + (Math.random()-0.5)*0.3).toFixed(2);
+      mountOverview();
+    }
+  }, 15000);
+
+  const clock = $q("#footClock");
+  const tick = () => clock.textContent = new Date().toLocaleString("en",{ weekday:"short", hour:"2-digit", minute:"2-digit", second:"2-digit" });
+  tick(); setInterval(tick, 1000);
+
+  setView("overview");
+  refreshBadges();
+  setTimeout(() => toast("Welcome to <b>FDB NPI Command Center</b> — click any KPI card, product row or Gantt bar.", "good"), 600);
+}
+
+document.addEventListener("DOMContentLoaded", boot);
+
+</script>
+</body>
+</html>
