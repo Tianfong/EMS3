@@ -1,5 +1,7 @@
 # FDB NPI Command Center — Fan Manufacturing
 
+[![CI](https://github.com/Tianfong/EMS3/actions/workflows/ci.yml/badge.svg)](https://github.com/Tianfong/EMS3/actions/workflows/ci.yml)
+
 A modern, interactive, fully responsive web dashboard for monitoring and managing
 New Product Introduction (NPI) of FDB fan manufacturing — from first prototype
 build to mass-production shipment.
@@ -62,6 +64,10 @@ node --check app.js    # optional syntax check; same for charts.js / data.js
 
 Open `index.html` directly in a browser (modular dev mode) or `app.html`
 (single-file). No server required.
+
+CI (`.github/workflows/ci.yml`) syntax-checks all JS sources, rebuilds
+`app.html`, and fails the run if the committed bundle is out of date — so the
+deployed site and the bundle can never drift.
 
 ## REST mode (optional)
 

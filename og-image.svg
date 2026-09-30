@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#0e1a33"/>
+    </linearGradient>
+    <linearGradient id="fan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#22d3a7"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1040" cy="140" r="260" fill="#0ea5e9" opacity="0.06"/>
+  <circle cx="140" cy="540" r="200" fill="#2563eb" opacity="0.07"/>
+  <!-- fan logo -->
+  <g transform="translate(880,315) scale(9)">
+    <circle cx="16" cy="16" r="14" fill="url(#fan)"/>
+    <circle cx="16" cy="16" r="3.5" fill="#0b1220"/>
+    <g fill="none" stroke="#0b1220" stroke-width="2.6" stroke-linecap="round">
+      <path d="M16 12.5 C 20 4, 28 8, 24 14"/>
+      <path d="M19.5 16 C 28 20, 24 28, 18 24"/>
+      <path d="M12.5 16 C 4 20, 8 28, 14 24"/>
+      <path d="M16 19.5 C 12 28, 4 24, 8 18"/>
+    </g>
+  </g>
+  <!-- eyebrow -->
+  <rect x="90" y="150" width="360" height="42" rx="21" fill="#0ea5e9" opacity="0.12"/>
+  <text x="270" y="178" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="600" fill="#7dd3fc" text-anchor="middle" letter-spacing="3">FAN MANUFACTURING · NPI</text>
+  <!-- title -->
+  <text x="88" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="76" font-weight="800" fill="#f1f5f9">FDB NPI</text>
+  <text x="88" y="378" font-family="Segoe UI, Arial, sans-serif" font-size="76" font-weight="800" fill="url(#accent)">Command Center</text>
+  <!-- subtitle -->
+  <text x="90" y="440" font-family="Segoe UI, Arial, sans-serif" font-size="26" fill="#94a3b8">KPIs · SPC quality · Lot Gantt · Claims · FACA · Shipments</text>
+  <!-- chips -->
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="600">
+    <rect x="90" y="490" width="120" height="44" rx="10" fill="#1e293b"/><text x="150" y="519" fill="#7dd3fc" text-anchor="middle">P1–PVT</text>
+    <rect x="224" y="490" width="140" height="44" rx="10" fill="#1e293b"/><text x="294" y="519" fill="#7dd3fc" text-anchor="middle">X4151–56</text>
+    <rect x="378" y="490" width="100" height="44" rx="10" fill="#1e293b"/><text x="428" y="519" fill="#7dd3fc" text-anchor="middle">L1–L4</text>
+    <rect x="492" y="490" width="130" height="44" rx="10" fill="#1e293b"/><text x="557" y="519" fill="#7dd3fc" text-anchor="middle">RHS · LHS</text>
+  </g>
+</svg>

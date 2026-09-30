@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Syntax check & bundle drift guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Syntax-check sources
+        run: |
+          node --check app.js
+          node --check charts.js
+          node --check data.js
+          node --check build.js
+
+      - name: Rebuild app.html
+        run: node build.js
+
+      - name: Fail if committed app.html is stale
+        run: |
+          if [ -n "$(git status --porcelain app.html)" ]; then
+            echo "::error::app.html is out of date with the sources."
+            echo "::error::Run 'node build.js' locally and commit the result."
+            git diff --stat -- app.html
+            exit 1
+          fi
+          echo "app.html is in sync with sources."
