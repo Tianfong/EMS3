@@ -1066,9 +1066,10 @@ function mountGantt(){
             const w = Math.max(rr-l, PX_PER_DAY*0.9);
             const color = barColor(t);
             const showTxt = w > 30;
-            return `<div class="g-bar ${byLot?"g-bar-lot":""}" data-row="${r.key}" data-phase-idx="${ti}" data-task="${esc(t.name)}"
-              style="left:${l.toFixed(1)}px;width:${w.toFixed(1)}px;background:${color}"
-              title="${esc(r.label)} · ${esc(t.name)} · ${t.s} → ${t.e} · ${t.done}% complete">${showTxt && t.done>0 ? t.done+"%" : ""}</div>`;
+            const onFill = (w * t.done / 100) >= 24; /* label rides the solid fill? */
+            return `<div class="g-bar ${byLot?"g-bar-lot":""}${t.done>=100?" g-done":""}" data-row="${r.key}" data-phase-idx="${ti}" data-task="${esc(t.name)}"
+              style="left:${l.toFixed(1)}px;width:${w.toFixed(1)}px;--pb:${color}"
+              title="${esc(r.label)} · ${esc(t.name)} · ${t.s} → ${t.e} · ${t.done}% complete"><i class="g-fill" style="width:${t.done}%"></i>${showTxt && t.done>0 ? `<b class="g-txt${onFill?"":" g-txt-lo"}">${t.done}%</b>` : ""}</div>`;
           }).join("")}
         </div>
       </div>`;

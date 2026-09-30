@@ -299,9 +299,21 @@ td.mono{font-family:var(--mono);font-size:12px}
   position:absolute;top:5px;height:20px;border-radius:7px;cursor:pointer;
   display:flex;align-items:center;padding:0 9px;font-size:10px;font-weight:700;color:#04121f;
   transition:.16s;min-width:26px;box-shadow:0 3px 10px -3px rgba(2,6,23,.5);
+  overflow:hidden;isolation:isolate;
+  background:color-mix(in srgb,var(--pb,#0ea5e9) 14%,transparent);
+  border:1px dashed color-mix(in srgb,var(--pb,#0ea5e9) 45%,transparent);
 }
 [data-theme="light"] .g-bar{color:#fff}
 .g-bar:hover{transform:scale(1.015);filter:brightness(1.12)}
+.g-fill{position:absolute;left:0;top:0;bottom:0;z-index:0;background:var(--pb,#0ea5e9);transition:width .3s}
+.g-txt{position:relative;z-index:1;letter-spacing:.2px}
+[data-theme="dark"] .g-txt-lo{color:#e0f2fe;text-shadow:0 1px 2px rgba(2,6,23,.55)}
+[data-theme="light"] .g-txt-lo{color:#0b1220}
+.g-bar.g-done{
+  border-style:solid;
+  box-shadow:0 4px 16px -3px color-mix(in srgb,var(--pb,#0ea5e9) 60%,transparent),
+             0 0 0 1px color-mix(in srgb,var(--pb,#0ea5e9) 55%,transparent);
+}
 .g-today{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--bad);z-index:3;box-shadow:0 0 8px var(--bad)}
 
 /* keep Today button visible on small screens */
