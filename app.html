@@ -1461,6 +1461,29 @@ const DataHub = {
   },
 };
 
+/* ---------- CSV parse (RFC 4180-ish: quotes, escaped quotes, CRLF) ---------- */
+function parseCSV(text){
+  const rows = [];
+  let row = [], cur = "", inQ = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (inQ){
+      if (c === '"'){ if (text[i+1] === '"'){ cur += '"'; i++; } else inQ = false; }
+      else cur += c;
+    } else if (c === '"') inQ = true;
+    else if (c === ","){ row.push(cur); cur = ""; }
+    else if (c === "\n" || c === "\r"){
+      if (c === "\r" && text[i+1] === "\n") i++;
+      row.push(cur); cur = "";
+      if (row.length > 1 || row[0] !== "") rows.push(row);
+      row = [];
+    } else cur += c;
+  }
+  row.push(cur);
+  if (row.length > 1 || row[0] !== "") rows.push(row);
+  return rows;
+}
+
 /* ---------- CSV export (Excel-compatible BOM) ---------- */
 function exportCSV(name, rows){
   const q = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
@@ -3184,6 +3207,12 @@ function openSettings(){
     <div id="stNote" class="item-sub" style="margin-bottom:14px"></div>
     <div class="item-title">REST contract</div>
     <div class="item-sub" style="margin:6px 0 14px"><span class="mono">GET /health · PATCH /claims/:id · POST /claims · PATCH /faca/:id</span> — JSON bodies, standard status codes. In demo mode writes persist to <span class="mono">localStorage[${DB.LS_KEY}]</span>.</div>
+    <div class="item-title">Import claims CSV</div>
+    <div class="item-sub" style="margin:6px 0 8px">Round-trips the Claims ⬇ export — columns <span class="mono">Claim,Product,Side,Customer,Severity,Status,Issue,Qty,Owner,ETA</span>. Rows update existing claims by id, or add new ones.</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <input type="file" id="stCsv" accept=".csv,text/csv" style="font-size:12px;max-width:230px"/>
+      <span class="item-sub" id="stCsvNote"></span>
+    </div>
     <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
       <button class="mini-btn" id="stReset">Reset local edits</button>
       <button class="btn-primary" id="stSave">Save</button>
@@ -3198,6 +3227,37 @@ function openSettings(){
     DB.resetOverrides();
     toast("Local edits reset to demo baseline", "warn");
     setView(STATE.view);
+  };
+  $q("#stCsv").onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const rows = parseCSV(String(rd.result).replace(/^\uFEFF/, ""));
+        const head = rows[0].map(h => h.trim().toLowerCase());
+        for (const need of ["claim", "product", "severity", "status"]){
+          if (!head.includes(need)) throw new Error(`missing column "${need}"`);
+        }
+        let upd = 0, added = 0;
+        rows.slice(1).forEach(r => {
+          const get = n => { const i = head.indexOf(n); return i >= 0 ? (r[i] ?? "").trim() : ""; };
+          const id = get("claim"); if (!id) return;
+          const patch = { product: get("product"), side: get("side"), customer: get("customer"),
+            severity: get("severity") || "Minor", status: get("status") || "Open", issue: get("issue"),
+            qty: +get("qty") || 0, owner: get("owner"), eta: get("eta") };
+          if (DB.CLAIMS.find(c => c.id === id)){ DataHub.updateClaim(id, patch); upd++; }
+          else { DataHub.addClaim({ id, ...patch }); added++; }
+        });
+        refreshBadges(); buildTicker(); setView(STATE.view);
+        $q("#stCsvNote").innerHTML = `✅ ${upd} updated · ${added} added`;
+        toast(`Claims import — <b>${upd}</b> updated · <b>${added}</b> added`, "good");
+      } catch(err){
+        $q("#stCsvNote").innerHTML = "❌ " + esc(String(err.message || err));
+        toast("CSV import failed — " + esc(String(err.message || err)), "bad");
+      }
+      e.target.value = "";
+    };
+    rd.readAsText(f);
   };
   $q("#stSave").onclick = () => {
     DataHub.mode = $q("#stMode").value;

@@ -1,0 +1,12 @@
+{
+  "name": "ems3-fdb-npi",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FDB NPI Command Center — zero-dependency NPI monitoring dashboard for FDB fan manufacturing",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js && node server/mes-mock.js",
+    "mes": "node server/mes-mock.js",
+    "test": "node server/test-mes.js"
+  }
+}

@@ -26,6 +26,9 @@ jobs:
           node --check data.js
           node --check build.js
 
+      - name: MES mock contract tests
+        run: npm test
+
       - name: Rebuild app.html
         run: node build.js
 
