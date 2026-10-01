@@ -8,7 +8,6 @@ const STATE = {
   product: "ALL",
   stage: "ALL",
   side: "ALL",
-  line: "ALL",
   lot: "ALL",
   spcLot: "ALL",
   range: "30D",
@@ -132,12 +131,12 @@ function exportShipments(){
 }
 
 /* ---------- sortable products ---------- */
-const SORTABLE = ["id","name","stage","lot","side","line","fpy","fy","uph","oee","ship","claim","vol"];
+const SORTABLE = ["id","name","stage","lot","side","fpy","fy","uph","oee","ship","claim","vol"];
 function sortedProducts(){
   const key = STATE.sortKey;
   const val = p => {
     const k = DB.PRODUCT_KPI[p.id];
-    return ({ id:p.id, name:p.name, stage:p.stage, lot:(DB.PRODUCT_LOTS[p.id]||[]).join(","), side:p.side, line:p.line,
+    return ({ id:p.id, name:p.name, stage:p.stage, lot:(DB.PRODUCT_LOTS[p.id]||[]).join(","), side:p.side,
       fpy:k.fpy, fy:k.fy, uph:k.uph, oee:k.oee, ship:k.ship, claim:k.claim,
       vol:p.vol.ytd/p.vol.target })[key];
   };
@@ -164,7 +163,6 @@ function filteredProducts(){
     (STATE.product === "ALL" || p.id === STATE.product) &&
     (STATE.stage === "ALL" || p.stage === STATE.stage) &&
     (STATE.side === "ALL" || p.side.includes(STATE.side)) &&
-    (STATE.line === "ALL" || p.line === STATE.line) &&
     (STATE.lot === "ALL" || (DB.PRODUCT_LOTS[p.id] || []).includes(STATE.lot))
   );
 }
@@ -198,7 +196,6 @@ function buildProductSelect(){
     if (STATE.product !== "ALL"){
       const p = DB.PRODUCTS.find(x => x.id === STATE.product);
       if (p){
-        STATE.line = p.line;
         if (p.stage !== STATE.stage){ STATE.stage = p.stage; STATE.lot = "ALL"; }
       }
     }
@@ -259,13 +256,6 @@ function kpiSnapshot(){
     fy  = fy*0.35 + lk.fy*0.65;
     uph = Math.round(uph*0.35 + lk.uph*0.65);
     oee = oee*0.35 + lk.oee*0.65;
-  }
-  // line bias
-  if (STATE.line !== "ALL" && DB.LINE_KPI[STATE.line]){
-    fpy += (DB.LINE_KPI[STATE.line].fpy - 96.3)*0.7;
-    uph = Math.round(uph + (DB.LINE_KPI[STATE.line].uph - 150)*0.55);
-    oee += (DB.LINE_KPI[STATE.line].oee - 80)*0.7;
-    ship += (DB.LINE_KPI[STATE.line].ship - 97.5)*0.6;
   }
   fpy  = Math.min(99.8, Math.max(84, fpy));
   fy   = Math.min(99.9, Math.max(90, fy));
@@ -353,9 +343,7 @@ function viewOverview(){
       <div id="sideSplit" style="display:flex;flex-direction:column;gap:10px"></div>
     </div>
     <div class="card">
-      <div class="card-head"><h3>Line health — L1–L4</h3><span class="sub"><span class="pill">FPY · UPH · OEE</span></span></div>
-      <div id="lineSplit" style="display:flex;flex-direction:column;gap:9px"></div>
-      <div class="card-head" style="margin-top:14px"><h3>Active lots in current scope</h3></div>
+      <div class="card-head"><h3>Active lots in current scope</h3></div>
       <div id="lotStrip" style="display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
   </div>
@@ -411,20 +399,6 @@ function mountOverview(){
   const r = DB.SIDE_KPI.RHS, l = DB.SIDE_KPI.LHS;
   $q("#sideSplit").innerHTML = `
     ${sideRow("RHS", r)}${sideRow("LHS", l)}`;
-
-  // line health comparison
-  $q("#lineSplit").innerHTML = DB.LINES.map(ln => {
-    const k = DB.LINE_KPI[ln];
-    const prods = DB.PRODUCTS.filter(p => p.line===ln).map(p=>p.id).join(", ") || "—";
-    const pct = (k.fpy-90)/(100-90)*100;
-    return `<div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
-        <b>${ln} <span style="color:var(--txt3);font-weight:500">· ${prods}</span></b>
-        <span class="mono" style="color:var(--txt2)">FPY ${k.fpy}% · UPH ${k.uph} · OEE ${k.oee}%</span>
-      </div>
-      <div class="bar"><i class="${k.fpy>=96.5?"g":k.fpy>=95?"w":"b"}" style="width:${pct.toFixed(0)}%"></i></div>
-    </div>`;
-  }).join("");
 
   // active lots strip — clickable chips scoped to the current filters
   const scopedLots = [...new Set(filteredProducts().flatMap(p => DB.PRODUCT_LOTS[p.id] || []))]
@@ -497,7 +471,6 @@ function productTableHTML(){
       <td><span class="pill ${p.stage==="PVT"?"good":p.stage==="DVT"?"acc":p.stage==="EVT"?"pur":"warn"}">${p.stage}</span></td>
       <td>${(DB.PRODUCT_LOTS[p.id]||[]).join(" · ")}</td>
       <td>${p.side}</td>
-      <td><span class="pill">${p.line}</span></td>
       <td class="num"><span class="pill ${fpyCls}">${k.fpy.toFixed(1)}%</span></td>
       <td class="num">${k.fy.toFixed(1)}%</td>
       <td class="num">${k.uph}</td>
@@ -514,9 +487,9 @@ function productTableHTML(){
   }).join("");
   return `<table>
     <thead><tr>
-      ${["id","name","stage","lot","side","line","fpy","fy","uph","oee","ship","claim","vol"]
+      ${["id","name","stage","lot","side","fpy","fy","uph","oee","ship","claim","vol"]
         .map(key => {
-          const label = { id:"Product", name:"Model", stage:"Stage", lot:"Lots", side:"Side", line:"Line", fpy:"FPY", fy:"FY", uph:"UPH", oee:"OEE", ship:"Ship %", claim:"Claims/FACA", vol:"YTD Volume" }[key];
+          const label = { id:"Product", name:"Model", stage:"Stage", lot:"Lots", side:"Side", fpy:"FPY", fy:"FY", uph:"UPH", oee:"OEE", ship:"Ship %", claim:"Claims/FACA", vol:"YTD Volume" }[key];
           return `<th data-sort="${key}">${label} ${arrow(key)}</th>`;
         }).join("")}
     </tr></thead>
@@ -1699,7 +1672,6 @@ function openProductModal(pid){
       <div class="stat-box"><span>Customer</span><b style="font-size:14px">${esc(p.customer)}</b></div>
       <div class="stat-box"><span>NPI stage</span><b>${p.stage}</b></div>
       <div class="stat-box"><span>Side</span><b>${p.side}</b></div>
-      <div class="stat-box"><span>Line</span><b>${p.line}</b></div>
       <div class="stat-box"><span>Lots</span><b style="font-size:13px">${(DB.PRODUCT_LOTS[p.id]||[]).join(" · ")}</b></div>
       <div class="stat-box"><span>Mule</span><b>${p.mule}</b></div>
       <div class="stat-box"><span>Ramp</span><b>${p.ramp}</b></div>
@@ -1755,11 +1727,11 @@ function buildSeg(el, items, key, allLabel){
     STATE[key] = b.dataset.v;
     el.querySelectorAll("button").forEach(x => x.classList.toggle("on", x===b));
     setView(STATE.view);
-    toast(`${key === "stage" ? "Stage" : key === "side" ? "Side" : key === "line" ? "Line" : "Range"} → <b>${b.dataset.v==="ALL"?"All":b.dataset.v}</b>`);
+    toast(`${key === "stage" ? "Stage" : key === "side" ? "Side" : "Range"} → <b>${b.dataset.v==="ALL"?"All":b.dataset.v}</b>`);
   });
 }
 function syncSegs(){
-  [["#stageSeg","stage"],["#sideSeg","side"],["#lineSeg","line"],["#rangeSeg","range"]].forEach(([sel,key]) => {
+  [["#stageSeg","stage"],["#sideSeg","side"],["#rangeSeg","range"]].forEach(([sel,key]) => {
     $q(sel).querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v===STATE[key]));
   });
   const ps = $q("#productSel"); if (ps) ps.value = STATE.product;
@@ -1874,7 +1846,6 @@ function boot(){
   rebuildLotSelect();
   buildSeg($q("#stageSeg"), DB.STAGES, "stage", "All");
   buildSeg($q("#sideSeg"),  DB.SIDES,  "side",  "All");
-  buildSeg($q("#lineSeg"),  DB.LINES,  "line",  "All");
   buildSeg($q("#rangeSeg"), DB.RANGES, "range", "");
 
   $q$(".nav-item").forEach(b => b.onclick = () => setView(b.dataset.view));
