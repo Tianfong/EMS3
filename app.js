@@ -342,26 +342,19 @@ function renderKpiCards(mount, snap){
 /* ---------- OVERVIEW ---------- */
 function viewOverview(){
   const snap = kpiSnapshot();
-  const S = DB.KPI_SERIES;
-  const n = { "7D":7, "30D":14, "QTD":28, "YTD":42 }[STATE.range] ?? 14;
 
   return `
   <div class="grid g-kpi" id="kpiCards">${""}</div>
 
-  <div class="grid g-32" style="margin-top:14px">
-    <div class="card">
-      <div class="card-head">
-        <h3 id="mainChartTitle">FPY trend — blended</h3>
-        <span class="sub"><span class="pill acc" id="mainChartVal">—</span></span>
-      </div>
-      <div id="mainChart"></div>
-    </div>
+  <div class="grid g-2" style="margin-top:14px">
     <div class="card">
       <div class="card-head"><h3>NPI stage pipeline</h3><span class="sub"><span class="pill">units & FPY</span></span></div>
       <div class="pipe" id="pipeWrap"></div>
       <div class="card-head" style="margin-top:14px"><h3>Side split — RHS vs LHS</h3></div>
       <div id="sideSplit" style="display:flex;flex-direction:column;gap:10px"></div>
-      <div class="card-head" style="margin-top:14px"><h3>Line health — L1–L4</h3></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Line health — L1–L4</h3><span class="sub"><span class="pill">FPY · UPH · OEE</span></span></div>
       <div id="lineSplit" style="display:flex;flex-direction:column;gap:9px"></div>
       <div class="card-head" style="margin-top:14px"><h3>Active lots in current scope</h3></div>
       <div id="lotStrip" style="display:flex;flex-wrap:wrap;gap:6px"></div>
@@ -396,21 +389,6 @@ function viewOverview(){
 function mountOverview(){
   const snap = kpiSnapshot();
   renderKpiCards($q("#kpiCards"), snap);
-
-  // main chart
-  const S = DB.KPI_SERIES;
-  const n = { "7D":7, "30D":14, "QTD":28, "YTD":42 }[STATE.range] ?? 14;
-  const series = shiftedSeries(S.fpy, (snap.fpy-96.2)*0.8, n);
-  const labels = labelsFor(S.fpy, n);
-  const draw = () => {
-    CHARTS.lineChart($q("#mainChart"), {
-      data: series, labels, target: 96.5,
-      onHover: i => $q("#mainChartVal").textContent = `D-${series.length-1-i} · ${series[i]}%`,
-      onOut:   () => $q("#mainChartVal").textContent = `now ${series.at(-1)}%`,
-    });
-    $q("#mainChartVal").textContent = `now ${series.at(-1)}%`;
-  };
-  draw();
 
   // pipeline
   $q("#pipeWrap").innerHTML = DB.PIPELINE.map(p => `
@@ -770,6 +748,14 @@ function mountKpi(){
     <div class="grid g-2">
       <div class="card"><div class="card-head"><h3>Roll-up waterfall</h3></div><div id="fpyWaterfall" style="display:flex;flex-direction:column;gap:9px"></div></div>
       <div class="card"><div class="card-head"><h3>Side comparison</h3></div><div id="fpySide"></div></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-head">
+        <h3>FPY trend — blended</h3>
+        <span class="sub"><span class="pill acc" id="mainChartVal">—</span></span>
+      </div>
+      <div id="mainChart"></div>
+      <div class="item-sub" style="margin-top:6px">Blended FPY across the current filter scope (product · stage · lot · side · line · range) — hover the chart to scan day by day.</div>
     </div>` : ""}
     ${(focus==="claim") ? `
     <div class="sec-head"><h2>Open claims feeding this KPI</h2><div class="rule"></div></div>
@@ -797,6 +783,16 @@ function mountKpi(){
   }).join("");
 
   if (focus==="fpy"){
+    /* blended scope trend — moved here from the Overview */
+    const bN = { "7D":7, "30D":14, "QTD":28, "YTD":42 }[STATE.range] ?? 14;
+    const bSeries = shiftedSeries(S.fpy, (snap.fpy-96.2)*0.8, bN);
+    const bLabels = labelsFor(S.fpy, bN);
+    CHARTS.lineChart($q("#mainChart"), {
+      data: bSeries, labels: bLabels, target: 96.5,
+      onHover: i => $q("#mainChartVal").textContent = `D-${bSeries.length-1-i} · ${bSeries[i]}%`,
+      onOut:   () => $q("#mainChartVal").textContent = `now ${bSeries.at(-1)}%`,
+    });
+    $q("#mainChartVal").textContent = `now ${bSeries.at(-1)}%`;
     let cum = 100;
     $q("#fpyWaterfall").innerHTML = DB.PROCESSES.map(pr => {
       const fpy = DB.PROCESS_KPI[pr.id][STATE.stage==="ALL"?"DVT":STATE.stage].fpy;

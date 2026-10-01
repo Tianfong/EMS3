@@ -4,9 +4,11 @@
 const CHARTS = (() => {
   const fmt = DB.fmtW;
 
-  function fmtY(v, f){
+  function fmtY(v, f, dec){
     if (f) return f(v);
-    return Math.abs(v) >= 1000 ? fmt(v) : (Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(1));
+    if (Math.abs(v) >= 1000) return fmt(v);
+    if (dec) return v.toFixed(1);
+    return Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(1);
   }
 
   /* line/area chart with hover crosshair */
@@ -35,8 +37,9 @@ const CHARTS = (() => {
     for (let g=0; g<=3; g++){
       const v = lo + (hi-lo)*g/3;
       const y = Y(v);
+      const dec = (hi - lo) < 5 && Math.abs(hi) < 1000;   /* tight range → 1 decimal, no dup labels */
       gridLines += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--line)" stroke-dasharray="3 5"/>`;
-      yLabels  += `<text x="${padL-7}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9" fill="${txt3}" class="mono">${fmtY(v, opts.fmt)}</text>`;
+      yLabels  += `<text x="${padL-7}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9" fill="${txt3}" class="mono">${fmtY(v, opts.fmt, dec)}</text>`;
     }
     let xLabels = "";
     const step = Math.max(1, Math.ceil(pts.length/8));
