@@ -1110,29 +1110,29 @@ const DB = (() => {
 
   /* ---------- dynamic alert feed (derived, always current) ---------- */
   const SYSTEM_ALERTS = [
-    { sev:"bad",  txt:"X4152 RHS FPY dipped 2.1σ below DVT control limit at Fan Assembly" },
-    { sev:"warn", txt:"X4155 P1 UPH 38% below line-rate target — tooling pilot" },
-    { sev:"good", txt:"X4154 PVT shipment achievement 99.6% — 3 weeks running" },
-    { sev:"warn", txt:"Fan Test Accessory fixture v3 re-design slipping 4 days (X4153 EVT)" },
+    { sev:"bad",  type:"spc",    txt:"X4152 RHS FPY dipped 2.1σ below DVT control limit at Fan Assembly" },
+    { sev:"warn", type:"system", txt:"X4155 P1 UPH 38% below line-rate target — tooling pilot" },
+    { sev:"good", type:"system", txt:"X4154 PVT shipment achievement 99.6% — 3 weeks running" },
+    { sev:"warn", type:"system", txt:"Fan Test Accessory fixture v3 re-design slipping 4 days (X4153 EVT)" },
   ];
   function dynamicAlerts(){
     const out = [];
     const todayIso = iso(TODAY);
     CLAIMS.forEach(c => {
-      if (c.severity === "Critical") out.push({ sev:"bad",  txt:`${c.id} Critical claim open — ${c.customer} containment due ${c.eta}` });
-      else if (c.status === "Containment") out.push({ sev:"warn", txt:`${c.id} ${c.severity} claim in containment — ${c.customer}, ETA ${c.eta}` });
+      if (c.severity === "Critical") out.push({ sev:"bad",  type:"claim", txt:`${c.id} Critical claim open — ${c.customer} containment due ${c.eta}` });
+      else if (c.status === "Containment") out.push({ sev:"warn", type:"claim", txt:`${c.id} ${c.severity} claim in containment — ${c.customer}, ETA ${c.eta}` });
     });
     FACA.forEach(f => {
-      if (f.status === "Overdue") out.push({ sev:"warn", txt:`${f.id} FACA overdue — ${f.title} (${f.product} ${f.stage})` });
+      if (f.status === "Overdue") out.push({ sev:"warn", type:"faca", txt:`${f.id} FACA overdue — ${f.title} (${f.product} ${f.stage})` });
     });
     PROJECTS.forEach(p => p.tasks.forEach(t => {
-      if (t.done < 100 && t.e && t.e < todayIso) out.push({ sev:"bad", txt:`${p.product} task overdue: ${t.name} (ended ${t.e} at ${t.done}%)` });
+      if (t.done < 100 && t.e && t.e < todayIso) out.push({ sev:"bad", type:"phase", txt:`${p.product} task overdue: ${t.name} (ended ${t.e} at ${t.done}%)` });
     }));
     /* overdue lot phases (Gantt at-risk rows) */
     Object.keys(LOT_TASKS).forEach(lotId => {
       const lot = LOTS.find(l => l.id === lotId); if (!lot) return;
       (LOT_TASKS[lotId] || []).forEach(t => {
-        if (t.done < 100 && t.e && t.e < todayIso) out.push({ sev:"bad", txt:`${lotId} ${lot.stage} phase overdue: ${t.name} (ended ${t.e} at ${t.done}%)` });
+        if (t.done < 100 && t.e && t.e < todayIso) out.push({ sev:"bad", type:"phase", txt:`${lotId} ${lot.stage} phase overdue: ${t.name} (ended ${t.e} at ${t.done}%)` });
       });
     });
     /* live SPC signals from the current sample window */
@@ -1142,8 +1142,8 @@ const DB = (() => {
       const ooc = data.filter(v => v > st.ucl || v < st.lcl).length;
       const we = westernElectric(data, st);
       const weN = Object.keys(we).length;
-      if (ooc) out.push({ sev:"bad", txt:`SPC: ${ooc} point(s) beyond ±3σ on the FPY control chart — investigate special cause` });
-      if (weN) out.push({ sev:"warn", txt:`SPC: ${weN} Western Electric signal(s) — early drift before a breach` });
+      if (ooc) out.push({ sev:"bad", type:"spc", txt:`SPC: ${ooc} point(s) beyond ±3σ on the FPY control chart — investigate special cause` });
+      if (weN) out.push({ sev:"warn", type:"spc", txt:`SPC: ${weN} Western Electric signal(s) — early drift before a breach` });
     } catch(e){}
     return out;
   }
@@ -1375,6 +1375,7 @@ const STATE = {
   stage: "ALL",
   side: "ALL",
   lot: "ALL",
+  alertFilter: "all",
   spcLot: "ALL",
   range: "30D",
   sortKey: null,
@@ -1737,6 +1738,7 @@ function viewOverview(){
       <h3>Live feed & alerts</h3>
       <span class="sub"><span class="pill good">live</span></span>
     </div>
+    <div class="seg" id="alertSeg" style="margin:0 0 12px;display:inline-flex;flex-wrap:wrap"></div>
     <div class="list" id="alertList"></div>
   </div>`;
 }
@@ -1808,13 +1810,22 @@ function mountOverview(){
     </div>`).join("");
   $q$("#flowWrap .flow-node").forEach(el => el.onclick = () => { STATE.proc = el.dataset.proc; setView("processes"); });
 
-  // alerts — derived live from claims/FACA/projects + system alerts
+  // alerts — derived live from claims/FACA/projects/SPC/phases, filterable by source
   const alerts = DB.allAlerts();
-  $q("#alertList").innerHTML = alerts.map(a => `
+  const ALERT_TYPES = ["claim", "faca", "spc", "phase", "system"];
+  const alertChip = (t, n) =>
+    `<button data-t="${t}" class="${STATE.alertFilter===t?"on":""}" ${n?"":"style=\"opacity:.45\""}>` +
+    `${t==="all"?"All":t==="system"?"Other":t==="faca"?"FACA":t==="spc"?"SPC":t[0].toUpperCase()+t.slice(1)} <b>${n}</b></button>`;
+  const counts = { all: alerts.length, system: 0 };
+  ALERT_TYPES.forEach(t => counts[t] = alerts.filter(a => (a.type || "system") === t).length);
+  $q("#alertSeg").innerHTML = alertChip("all", counts.all) + ALERT_TYPES.map(t => alertChip(t, counts[t])).join("");
+  $q$("#alertSeg button").forEach(b => b.onclick = () => { STATE.alertFilter = b.dataset.t; mountOverview(); });
+  const shown = STATE.alertFilter === "all" ? alerts : alerts.filter(a => (a.type || "system") === STATE.alertFilter);
+  $q("#alertList").innerHTML = shown.length ? shown.map(a => `
     <div class="item">
       <div class="item-ico" style="background:var(--${a.sev}-soft);color:var(--${a.sev})">${a.sev==="bad"?"⚑":a.sev==="warn"?"⚠":"✓"}</div>
-      <div class="item-body"><div class="item-title">${esc(a.txt)}</div><div class="item-sub">just now · auto-detected</div></div>
-    </div>`).join("");
+      <div class="item-body"><div class="item-title">${esc(a.txt)}</div><div class="item-sub">just now · ${a.type==="system"?"auto-detected":a.type}</div></div>
+    </div>`).join("") : `<div class="empty">No ${STATE.alertFilter === "all" ? "" : STATE.alertFilter + " "}alerts in scope — all clear</div>`;
 
   // section 2 — the KPI deep dive lives inside the overview
   mountKpiDeepDive();

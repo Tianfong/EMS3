@@ -9,6 +9,7 @@ const STATE = {
   stage: "ALL",
   side: "ALL",
   lot: "ALL",
+  alertFilter: "all",
   spcLot: "ALL",
   range: "30D",
   sortKey: null,
@@ -371,6 +372,7 @@ function viewOverview(){
       <h3>Live feed & alerts</h3>
       <span class="sub"><span class="pill good">live</span></span>
     </div>
+    <div class="seg" id="alertSeg" style="margin:0 0 12px;display:inline-flex;flex-wrap:wrap"></div>
     <div class="list" id="alertList"></div>
   </div>`;
 }
@@ -442,13 +444,22 @@ function mountOverview(){
     </div>`).join("");
   $q$("#flowWrap .flow-node").forEach(el => el.onclick = () => { STATE.proc = el.dataset.proc; setView("processes"); });
 
-  // alerts — derived live from claims/FACA/projects + system alerts
+  // alerts — derived live from claims/FACA/projects/SPC/phases, filterable by source
   const alerts = DB.allAlerts();
-  $q("#alertList").innerHTML = alerts.map(a => `
+  const ALERT_TYPES = ["claim", "faca", "spc", "phase", "system"];
+  const alertChip = (t, n) =>
+    `<button data-t="${t}" class="${STATE.alertFilter===t?"on":""}" ${n?"":"style=\"opacity:.45\""}>` +
+    `${t==="all"?"All":t==="system"?"Other":t==="faca"?"FACA":t==="spc"?"SPC":t[0].toUpperCase()+t.slice(1)} <b>${n}</b></button>`;
+  const counts = { all: alerts.length, system: 0 };
+  ALERT_TYPES.forEach(t => counts[t] = alerts.filter(a => (a.type || "system") === t).length);
+  $q("#alertSeg").innerHTML = alertChip("all", counts.all) + ALERT_TYPES.map(t => alertChip(t, counts[t])).join("");
+  $q$("#alertSeg button").forEach(b => b.onclick = () => { STATE.alertFilter = b.dataset.t; mountOverview(); });
+  const shown = STATE.alertFilter === "all" ? alerts : alerts.filter(a => (a.type || "system") === STATE.alertFilter);
+  $q("#alertList").innerHTML = shown.length ? shown.map(a => `
     <div class="item">
       <div class="item-ico" style="background:var(--${a.sev}-soft);color:var(--${a.sev})">${a.sev==="bad"?"⚑":a.sev==="warn"?"⚠":"✓"}</div>
-      <div class="item-body"><div class="item-title">${esc(a.txt)}</div><div class="item-sub">just now · auto-detected</div></div>
-    </div>`).join("");
+      <div class="item-body"><div class="item-title">${esc(a.txt)}</div><div class="item-sub">just now · ${a.type==="system"?"auto-detected":a.type}</div></div>
+    </div>`).join("") : `<div class="empty">No ${STATE.alertFilter === "all" ? "" : STATE.alertFilter + " "}alerts in scope — all clear</div>`;
 
   // section 2 — the KPI deep dive lives inside the overview
   mountKpiDeepDive();

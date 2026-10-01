@@ -481,29 +481,29 @@ const DB = (() => {
 
   /* ---------- dynamic alert feed (derived, always current) ---------- */
   const SYSTEM_ALERTS = [
-    { sev:"bad",  txt:"X4152 RHS FPY dipped 2.1σ below DVT control limit at Fan Assembly" },
-    { sev:"warn", txt:"X4155 P1 UPH 38% below line-rate target — tooling pilot" },
-    { sev:"good", txt:"X4154 PVT shipment achievement 99.6% — 3 weeks running" },
-    { sev:"warn", txt:"Fan Test Accessory fixture v3 re-design slipping 4 days (X4153 EVT)" },
+    { sev:"bad",  type:"spc",    txt:"X4152 RHS FPY dipped 2.1σ below DVT control limit at Fan Assembly" },
+    { sev:"warn", type:"system", txt:"X4155 P1 UPH 38% below line-rate target — tooling pilot" },
+    { sev:"good", type:"system", txt:"X4154 PVT shipment achievement 99.6% — 3 weeks running" },
+    { sev:"warn", type:"system", txt:"Fan Test Accessory fixture v3 re-design slipping 4 days (X4153 EVT)" },
   ];
   function dynamicAlerts(){
     const out = [];
     const todayIso = iso(TODAY);
     CLAIMS.forEach(c => {
-      if (c.severity === "Critical") out.push({ sev:"bad",  txt:`${c.id} Critical claim open — ${c.customer} containment due ${c.eta}` });
-      else if (c.status === "Containment") out.push({ sev:"warn", txt:`${c.id} ${c.severity} claim in containment — ${c.customer}, ETA ${c.eta}` });
+      if (c.severity === "Critical") out.push({ sev:"bad",  type:"claim", txt:`${c.id} Critical claim open — ${c.customer} containment due ${c.eta}` });
+      else if (c.status === "Containment") out.push({ sev:"warn", type:"claim", txt:`${c.id} ${c.severity} claim in containment — ${c.customer}, ETA ${c.eta}` });
     });
     FACA.forEach(f => {
-      if (f.status === "Overdue") out.push({ sev:"warn", txt:`${f.id} FACA overdue — ${f.title} (${f.product} ${f.stage})` });
+      if (f.status === "Overdue") out.push({ sev:"warn", type:"faca", txt:`${f.id} FACA overdue — ${f.title} (${f.product} ${f.stage})` });
     });
     PROJECTS.forEach(p => p.tasks.forEach(t => {
-      if (t.done < 100 && t.e && t.e < todayIso) out.push({ sev:"bad", txt:`${p.product} task overdue: ${t.name} (ended ${t.e} at ${t.done}%)` });
+      if (t.done < 100 && t.e && t.e < todayIso) out.push({ sev:"bad", type:"phase", txt:`${p.product} task overdue: ${t.name} (ended ${t.e} at ${t.done}%)` });
     }));
     /* overdue lot phases (Gantt at-risk rows) */
     Object.keys(LOT_TASKS).forEach(lotId => {
       const lot = LOTS.find(l => l.id === lotId); if (!lot) return;
       (LOT_TASKS[lotId] || []).forEach(t => {
-        if (t.done < 100 && t.e && t.e < todayIso) out.push({ sev:"bad", txt:`${lotId} ${lot.stage} phase overdue: ${t.name} (ended ${t.e} at ${t.done}%)` });
+        if (t.done < 100 && t.e && t.e < todayIso) out.push({ sev:"bad", type:"phase", txt:`${lotId} ${lot.stage} phase overdue: ${t.name} (ended ${t.e} at ${t.done}%)` });
       });
     });
     /* live SPC signals from the current sample window */
@@ -513,8 +513,8 @@ const DB = (() => {
       const ooc = data.filter(v => v > st.ucl || v < st.lcl).length;
       const we = westernElectric(data, st);
       const weN = Object.keys(we).length;
-      if (ooc) out.push({ sev:"bad", txt:`SPC: ${ooc} point(s) beyond ±3σ on the FPY control chart — investigate special cause` });
-      if (weN) out.push({ sev:"warn", txt:`SPC: ${weN} Western Electric signal(s) — early drift before a breach` });
+      if (ooc) out.push({ sev:"bad", type:"spc", txt:`SPC: ${ooc} point(s) beyond ±3σ on the FPY control chart — investigate special cause` });
+      if (weN) out.push({ sev:"warn", type:"spc", txt:`SPC: ${weN} Western Electric signal(s) — early drift before a breach` });
     } catch(e){}
     return out;
   }
