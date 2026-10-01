@@ -8,6 +8,7 @@ const STATE = {
   product: "ALL",
   stage: "ALL",
   side: "ALL",
+  machine: "ALL",
   lot: "ALL",
   alertFilter: "all",
   spcLot: "ALL",
@@ -157,12 +158,12 @@ function bindSecNavSpy(){
 }
 
 /* ---------- sortable products ---------- */
-const SORTABLE = ["id","name","stage","lot","side","fpy","fy","uph","oee","ship","claim","vol"];
+const SORTABLE = ["id","name","stage","lot","side","machine","fpy","fy","uph","oee","ship","claim","vol"];
 function sortedProducts(){
   const key = STATE.sortKey;
   const val = p => {
     const k = DB.PRODUCT_KPI[p.id];
-    return ({ id:p.id, name:p.name, stage:p.stage, lot:(DB.PRODUCT_LOTS[p.id]||[]).join(","), side:p.side,
+    return ({ id:p.id, name:p.name, stage:p.stage, lot:(DB.PRODUCT_LOTS[p.id]||[]).join(","), side:p.side, machine:p.machine,
       fpy:k.fpy, fy:k.fy, uph:k.uph, oee:k.oee, ship:k.ship, claim:k.claim,
       vol:p.vol.ytd/p.vol.target })[key];
   };
@@ -189,6 +190,7 @@ function filteredProducts(){
     (STATE.product === "ALL" || p.id === STATE.product) &&
     (STATE.stage === "ALL" || p.stage === STATE.stage) &&
     (STATE.side === "ALL" || p.side.includes(STATE.side)) &&
+    (STATE.machine === "ALL" || p.machine === STATE.machine) &&
     (STATE.lot === "ALL" || (DB.PRODUCT_LOTS[p.id] || []).includes(STATE.lot))
   );
 }
@@ -222,6 +224,7 @@ function buildProductSelect(){
     if (STATE.product !== "ALL"){
       const p = DB.PRODUCTS.find(x => x.id === STATE.product);
       if (p){
+        STATE.machine = p.machine;
         if (p.stage !== STATE.stage){ STATE.stage = p.stage; STATE.lot = "ALL"; }
       }
     }
@@ -528,6 +531,7 @@ function productTableHTML(){
       <td><span class="pill ${p.stage==="PVT"?"good":p.stage==="DVT"?"acc":p.stage==="EVT"?"pur":"warn"}">${p.stage}</span></td>
       <td>${(DB.PRODUCT_LOTS[p.id]||[]).join(" · ")}</td>
       <td>${p.side}</td>
+      <td><span class="pill">${p.machine || "—"}</span></td>
       <td class="num"><span class="pill ${fpyCls}">${k.fpy.toFixed(1)}%</span></td>
       <td class="num">${k.fy.toFixed(1)}%</td>
       <td class="num">${k.uph}</td>
@@ -544,9 +548,9 @@ function productTableHTML(){
   }).join("");
   return `<table>
     <thead><tr>
-      ${["id","name","stage","lot","side","fpy","fy","uph","oee","ship","claim","vol"]
+      ${["id","name","stage","lot","side","machine","fpy","fy","uph","oee","ship","claim","vol"]
         .map(key => {
-          const label = { id:"Product", name:"Model", stage:"Stage", lot:"Lots", side:"Side", fpy:"FPY", fy:"FY", uph:"UPH", oee:"OEE", ship:"Ship %", claim:"Claims/FACA", vol:"YTD Volume" }[key];
+          const label = { id:"Product", name:"Model", stage:"Stage", lot:"Lots", side:"Side", machine:"MF", fpy:"FPY", fy:"FY", uph:"UPH", oee:"OEE", ship:"Ship %", claim:"Claims/FACA", vol:"YTD Volume" }[key];
           return `<th data-sort="${key}">${label} ${arrow(key)}</th>`;
         }).join("")}
     </tr></thead>
@@ -1730,6 +1734,7 @@ function openProductModal(pid){
       <div class="stat-box"><span>Customer</span><b style="font-size:14px">${esc(p.customer)}</b></div>
       <div class="stat-box"><span>NPI stage</span><b>${p.stage}</b></div>
       <div class="stat-box"><span>Side</span><b>${p.side}</b></div>
+      <div class="stat-box"><span>Machine</span><b>${p.machine || "—"}</b></div>
       <div class="stat-box"><span>Lots</span><b style="font-size:13px">${(DB.PRODUCT_LOTS[p.id]||[]).join(" · ")}</b></div>
       <div class="stat-box"><span>Mule</span><b>${p.mule}</b></div>
       <div class="stat-box"><span>Ramp</span><b>${p.ramp}</b></div>
@@ -1785,11 +1790,11 @@ function buildSeg(el, items, key, allLabel){
     STATE[key] = b.dataset.v;
     el.querySelectorAll("button").forEach(x => x.classList.toggle("on", x===b));
     setView(STATE.view);
-    toast(`${key === "stage" ? "Stage" : key === "side" ? "Side" : "Range"} → <b>${b.dataset.v==="ALL"?"All":b.dataset.v}</b>`);
+    toast(`${key === "stage" ? "Stage" : key === "side" ? "Side" : key === "machine" ? "Machine" : "Range"} → <b>${b.dataset.v==="ALL"?"All":b.dataset.v}</b>`);
   });
 }
 function syncSegs(){
-  [["#stageSeg","stage"],["#sideSeg","side"],["#rangeSeg","range"]].forEach(([sel,key]) => {
+  [["#stageSeg","stage"],["#sideSeg","side"],["#machineSeg","machine"],["#rangeSeg","range"]].forEach(([sel,key]) => {
     $q(sel).querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v===STATE[key]));
   });
   const ps = $q("#productSel"); if (ps) ps.value = STATE.product;
@@ -1904,6 +1909,7 @@ function boot(){
   rebuildLotSelect();
   buildSeg($q("#stageSeg"), DB.STAGES, "stage", "All");
   buildSeg($q("#sideSeg"),  DB.SIDES,  "side",  "All");
+  buildSeg($q("#machineSeg"), DB.MACHINES, "machine", "All");
   buildSeg($q("#rangeSeg"), DB.RANGES, "range", "");
 
   $q$(".nav-item").forEach(b => b.onclick = () => setView(b.dataset.view));

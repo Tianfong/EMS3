@@ -11,6 +11,7 @@ const DB = (() => {
   const STAGES = ["P1", "P2", "EVT", "DVT", "PVT"];
   const SIDES  = ["RHS", "LHS"];
   const RANGES = ["7D", "30D", "QTD", "YTD"];
+  const MACHINES = ["MF-01", "MF-02", "MF-03", "MF-04"];   /* machine / fixture cells */
 
   const PROCESSES = [
     { id:"rotor",    name:"Rotor Assembly",        ico:"🌀", target:{ fpy:97.0, uph:150, oee:82 } },
@@ -20,12 +21,12 @@ const DB = (() => {
   ];
 
   const PRODUCTS = [
-    { id:"X4151", name:"FDB 92mm · Server",      customer:"CloudCore",  stage:"DVT", side:"RHS+LHS", mule:"M4",      ramp:"2026-Q4", vol: { ytd: 41200, target: 45000 } },
-    { id:"X4152", name:"FDB 120mm · High-CFM",   customer:"NovaServe",  stage:"DVT", side:"RHS+LHS", mule:"M4",      ramp:"2026-Q4", vol: { ytd: 38600, target: 40000 } },
-    { id:"X4153", name:"FDB 80mm · Slim",        customer:"EdgeWave",   stage:"EVT", side:"RHS",     mule:"M3",      ramp:"2027-Q1", vol: { ytd: 12600, target: 15000 } },
-    { id:"X4154", name:"FDB 120mm · Dual",       customer:"NovaServe",  stage:"PVT", side:"RHS+LHS", mule:"M5",      ramp:"2026-Q3", vol: { y_data:0, ytd: 52100, target: 50000 } },
-    { id:"X4155", name:"FDB 60mm · Blade",       customer:"PicoCloud",  stage:"P1",  side:"LHS",     mule:"M1",      ramp:"2027-Q2", vol: { ytd: 2100,  target: 6000 } },
-    { id:"X4156", name:"FDB 97mm · Silent",      customer:"CloudCore",  stage:"P2",  side:"RHS",     mule:"M2",      ramp:"2027-Q1", vol: { ytd: 5400,  target: 8000 } },
+    { id:"X4151", name:"FDB 92mm · Server",      customer:"CloudCore",  stage:"DVT", side:"RHS+LHS", mule:"M4",      ramp:"2026-Q4", machine:"MF-01", vol: { ytd: 41200, target: 45000 } },
+    { id:"X4152", name:"FDB 120mm · High-CFM",   customer:"NovaServe",  stage:"DVT", side:"RHS+LHS", mule:"M4",      ramp:"2026-Q4", machine:"MF-01", vol: { ytd: 38600, target: 40000 } },
+    { id:"X4153", name:"FDB 80mm · Slim",        customer:"EdgeWave",   stage:"EVT", side:"RHS",     mule:"M3",      ramp:"2027-Q1", machine:"MF-02", vol: { ytd: 12600, target: 15000 } },
+    { id:"X4154", name:"FDB 120mm · Dual",       customer:"NovaServe",  stage:"PVT", side:"RHS+LHS", mule:"M5",      ramp:"2026-Q3", machine:"MF-03", vol: { ytd: 52100, target: 50000 } },
+    { id:"X4155", name:"FDB 60mm · Blade",       customer:"PicoCloud",  stage:"P1",  side:"LHS",     mule:"M1",      ramp:"2027-Q2", machine:"MF-04", vol: { ytd: 2100,  target: 6000 } },
+    { id:"X4156", name:"FDB 97mm · Silent",      customer:"CloudCore",  stage:"P2",  side:"RHS",     mule:"M2",      ramp:"2027-Q1", machine:"MF-04", vol: { ytd: 5400,  target: 8000 } },
   ];
   PRODUCTS.forEach(p => delete p.vol.y_data);
 
@@ -522,7 +523,7 @@ const DB = (() => {
 
   /* ---------- public API ---------- */
   return {
-    STAGES, SIDES, RANGES, LOTS, PRODUCT_LOTS, LOT_KPI, LOT_PHASES, LOT_TASKS,
+    STAGES, SIDES, RANGES, MACHINES, LOTS, PRODUCT_LOTS, LOT_KPI, LOT_PHASES, LOT_TASKS,
     PROCESSES, PRODUCTS, KPIS, KPI_SERIES,
     PRODUCT_KPI, PROCESS_KPI, SIDE_KPI, SHIPMENTS, CLAIMS, FACA,
     PROJECTS, PIPELINE, ALERTS, TODAY,
