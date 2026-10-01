@@ -163,6 +163,9 @@ input,select{font-family:inherit;color:inherit}
 /* ---------- cards & grid ---------- */
 .grid{display:grid;gap:14px}
 .g-kpi{grid-template-columns:repeat(5,1fr)}
+.g-kpi .card.kpi{cursor:pointer;transition:.16s}
+.g-kpi .card.kpi:hover{transform:translateY(-2px);border-color:var(--line2);box-shadow:var(--shadow)}
+.g-kpi .card.kpi:hover .kpi-name{color:var(--acc)}
 .g-2{grid-template-columns:1fr 1fr}
 .g-3{grid-template-columns:repeat(3,1fr)}
 .g-32{grid-template-columns:2fr 1fr}

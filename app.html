@@ -188,6 +188,9 @@ input,select{font-family:inherit;color:inherit}
 /* ---------- cards & grid ---------- */
 .grid{display:grid;gap:14px}
 .g-kpi{grid-template-columns:repeat(5,1fr)}
+.g-kpi .card.kpi{cursor:pointer;transition:.16s}
+.g-kpi .card.kpi:hover{transform:translateY(-2px);border-color:var(--line2);box-shadow:var(--shadow)}
+.g-kpi .card.kpi:hover .kpi-name{color:var(--acc)}
 .g-2{grid-template-columns:1fr 1fr}
 .g-3{grid-template-columns:repeat(3,1fr)}
 .g-32{grid-template-columns:2fr 1fr}
@@ -1742,6 +1745,17 @@ function mountOverview(){
   const snap = kpiSnapshot();
   renderKpiCards($q("#kpiCards"), snap);
 
+  // KPI cards jump into the embedded deep dive on the matching tab
+  $q$("#kpiCards .card.kpi").forEach(card => {
+    card.onclick = () => {
+      STATE.kpiFocus = card.dataset.kpi;
+      mountKpiDeepDive();
+      $q("#kpiTabs").scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollBy(0, -84);   /* clear the sticky topbar */
+      toast(`Deep dive → <b>${esc(card.querySelector(".kpi-name").textContent)}</b>`, "good");
+    };
+  });
+
   // pipeline
   $q("#pipeWrap").innerHTML = DB.PIPELINE.map(p => `
     <div class="pipe-stage ${STATE.stage===p.stage?"on":""}" data-stage="${p.stage}">
@@ -2035,6 +2049,7 @@ function mountKpiDeepDive(){
   $q$("#kpiTabs button").forEach(b => {
     b.onclick = () => { STATE.kpiFocus = b.dataset.kpi; mountKpiDeepDive(); retab(); };
   });
+  retab();   /* keep tab pills in sync when the focus is set from the KPI cards */
   function retab(){
     $q$("#kpiTabs button").forEach(b => b.classList.toggle("on", b.dataset.kpi===STATE.kpiFocus));
   }

@@ -379,6 +379,17 @@ function mountOverview(){
   const snap = kpiSnapshot();
   renderKpiCards($q("#kpiCards"), snap);
 
+  // KPI cards jump into the embedded deep dive on the matching tab
+  $q$("#kpiCards .card.kpi").forEach(card => {
+    card.onclick = () => {
+      STATE.kpiFocus = card.dataset.kpi;
+      mountKpiDeepDive();
+      $q("#kpiTabs").scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollBy(0, -84);   /* clear the sticky topbar */
+      toast(`Deep dive → <b>${esc(card.querySelector(".kpi-name").textContent)}</b>`, "good");
+    };
+  });
+
   // pipeline
   $q("#pipeWrap").innerHTML = DB.PIPELINE.map(p => `
     <div class="pipe-stage ${STATE.stage===p.stage?"on":""}" data-stage="${p.stage}">
@@ -672,6 +683,7 @@ function mountKpiDeepDive(){
   $q$("#kpiTabs button").forEach(b => {
     b.onclick = () => { STATE.kpiFocus = b.dataset.kpi; mountKpiDeepDive(); retab(); };
   });
+  retab();   /* keep tab pills in sync when the focus is set from the KPI cards */
   function retab(){
     $q$("#kpiTabs button").forEach(b => b.classList.toggle("on", b.dataset.kpi===STATE.kpiFocus));
   }
