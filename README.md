@@ -24,7 +24,9 @@ tooling beyond a simple inliner, no network calls in demo mode.
 
 ## Features
 
-- **9 views** — Overview, Products, Processes, KPI, Quality·SPC, Gantt, FACA,
+- **8 views** — Overview (with the embedded KPI Deep Dive: FPY/FY/UPH/OEE/Shipment/
+  Claims/FACA tabs, per-KPI charts, breakdowns, stage-contribution waterfall and
+  the blended scope trend), Products, Processes, Quality·SPC, Gantt, FACA,
   Claims, Shipments, plus an executive stage-gate report modal (print/PDF-ready).
 - **Cross-filtering** — Product × Stage × Lot × Side × Line × Range; product
   select cascades Line + Stage, lot select cascades Stage; everything stays

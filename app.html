@@ -550,7 +550,6 @@ body.g-dragging .g-bar{transition:none}
       <button class="nav-item active" data-view="overview"><span class="nav-ico">◉</span>Overview<span class="nav-badge" id="badgeAlerts">3</span></button>
       <button class="nav-item" data-view="products"><span class="nav-ico">▤</span>Products</button>
       <button class="nav-item" data-view="processes"><span class="nav-ico">⚙</span>Processes</button>
-      <button class="nav-item" data-view="kpi"><span class="nav-ico">📈</span>KPI Deep Dive</button>
       <button class="nav-item" data-view="quality"><span class="nav-ico">📊</span>Quality · SPC</button>
       <button class="nav-item" data-view="gantt"><span class="nav-ico">🗓</span>Project Gantt<span class="nav-badge amber" id="badgeAtRisk">2</span></button>
       <button class="nav-item" data-view="faca"><span class="nav-ico">✎</span>FACA<span class="nav-badge" id="badgeFaca">4</span></button>
@@ -1405,7 +1404,6 @@ const VIEWS = {
   overview:  { title:"Overview",       sub:"New Product Introduction · real-time command view" },
   products:  { title:"Products",       sub:"X4151–X4156 · stage, side, yield & volume" },
   processes: { title:"Processes",      sub:"Rotor · Pillow-stator · Fan assembly · Test accessory" },
-  kpi:       { title:"KPI Deep Dive",  sub:"FPY · FY · UPH · OEE · Shipment · Claims · FACA" },
   quality:   { title:"Quality — SPC",  sub:"Control charts · Cpk · Pareto · defect mix" },
   gantt:     { title:"Projects — Gantt", sub:"NPI stage gates & ramp plan" },
   faca:      { title:"FACA",           sub:"Follow-up & Corrective Action Committee" },
@@ -1759,6 +1757,12 @@ function viewOverview(){
     </div>
   </div>
 
+  <div class="sec-head"><h2>KPI Deep Dive</h2><div class="rule"></div><span class="pill">${DB.KPIS.map(k=>k.name).join(" · ")}</span></div>
+  <div class="seg" id="kpiTabs" style="margin:2px 0 14px;display:inline-flex">
+    ${DB.KPIS.map(k=>`<button data-kpi="${k.id}" class="${k.id===(STATE.kpiFocus||"fpy")?"on":""}">${k.name}</button>`).join("")}
+  </div>
+  <div id="kpiBody"></div>
+
   <div class="sec-head"><h2>Products at a glance</h2><div class="rule"></div><span class="pill">${snap.nProducts} of ${DB.PRODUCTS.length} shown</span></div>
   <div class="card" style="padding:6px 10px">
     <div class="table-wrap" style="border:none">
@@ -1844,6 +1848,9 @@ function mountOverview(){
       <div class="item-ico" style="background:var(--${a.sev}-soft);color:var(--${a.sev})">${a.sev==="bad"?"⚑":a.sev==="warn"?"⚠":"✓"}</div>
       <div class="item-body"><div class="item-title">${esc(a.txt)}</div><div class="item-sub">just now · auto-detected</div></div>
     </div>`).join("");
+
+  // section 2 — the KPI deep dive lives inside the overview
+  mountKpiDeepDive();
 }
 
 function sideRow(name, k){
@@ -2069,22 +2076,12 @@ function renderProcDetail(){
   CHARTS.lineChart($q("#procTrend"), { data: series, labels: labelsFor(series, series.length), fmt: v=>v.toFixed(1)+"%", target: pr.target.fpy });
 }
 
-/* ---------- KPI DEEP DIVE ---------- */
-function viewKpi(){
-  const focus = STATE.kpiFocus || "fpy";
-  const kdef = DB.KPIS.find(k=>k.id===focus) || DB.KPIS[0];
-  return `
-  <div class="seg" id="kpiTabs" style="margin:2px 0 14px;display:inline-flex">
-    ${DB.KPIS.map(k=>`<button data-kpi="${k.id}" class="${k.id===focus?"on":""}">${k.name}</button>`).join("")}
-  </div>
-  <div id="kpiBody"></div>`;
-}
-
-function mountKpi(){
+/* ---------- KPI DEEP DIVE (rendered as Overview section 2) ---------- */
+function mountKpiDeepDive(){
   const focus = STATE.kpiFocus || "fpy";
   const kdef = DB.KPIS.find(k=>k.id===focus) || DB.KPIS[0];
   $q$("#kpiTabs button").forEach(b => {
-    b.onclick = () => { STATE.kpiFocus = b.dataset.kpi; mountKpi(); retab(); };
+    b.onclick = () => { STATE.kpiFocus = b.dataset.kpi; mountKpiDeepDive(); retab(); };
   });
   function retab(){
     $q$("#kpiTabs button").forEach(b => b.classList.toggle("on", b.dataset.kpi===STATE.kpiFocus));
@@ -3135,7 +3132,6 @@ function setView(v){
     overview:  [viewOverview,  mountOverview],
     products:  [viewProducts,  mountProducts],
     processes: [viewProcesses, mountProcesses],
-    kpi:       [viewKpi,       mountKpi],
     quality:   [viewQuality,   mountQuality],
     gantt:     [viewGantt,     mountGantt],
     faca:      [viewFaca,      mountFaca],
