@@ -325,11 +325,20 @@ td.mono{font-family:var(--mono);font-size:12px}
   overflow:hidden;isolation:isolate;
   background:color-mix(in srgb,var(--pb,#0ea5e9) 14%,transparent);
   border:1px dashed color-mix(in srgb,var(--pb,#0ea5e9) 45%,transparent);
+  touch-action:none;user-select:none;-webkit-user-select:none;
 }
 [data-theme="light"] .g-bar{color:#fff}
 .g-bar:hover{transform:scale(1.015);filter:brightness(1.12)}
+body.g-dragging, body.g-dragging *{cursor:col-resize !important}
+body.g-dragging .g-bar{transition:none}
+.g-bar .g-grip{
+  position:absolute;right:0;top:0;bottom:0;width:8px;cursor:ew-resize;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--pb,#0ea5e9) 55%,transparent));
+  opacity:0;transition:.15s;border-radius:0 7px 7px 0;
+}
+.g-bar:hover .g-grip{opacity:1}
 .g-fill{position:absolute;left:0;top:0;bottom:0;z-index:0;background:var(--pb,#0ea5e9);transition:width .3s}
-.g-txt{position:relative;z-index:1;letter-spacing:.2px}
+.g-txt{position:relative;z-index:1;letter-spacing:.2px;pointer-events:none}
 [data-theme="dark"] .g-txt-lo{color:#e0f2fe;text-shadow:0 1px 2px rgba(2,6,23,.55)}
 [data-theme="light"] .g-txt-lo{color:#0b1220}
 .g-bar.g-done{
@@ -337,6 +346,25 @@ td.mono{font-family:var(--mono);font-size:12px}
   box-shadow:0 4px 16px -3px color-mix(in srgb,var(--pb,#0ea5e9) 60%,transparent),
              0 0 0 1px color-mix(in srgb,var(--pb,#0ea5e9) 55%,transparent);
 }
+.g-bar.g-crit{
+  border:1px solid var(--warn);
+  animation:g-crit-pulse 1.8s ease-in-out infinite;
+}
+.g-bar.g-risk{
+  border:1px solid var(--bad);
+  animation:g-risk-pulse 1.5s ease-in-out infinite;
+}
+@keyframes g-crit-pulse{
+  0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--warn) 55%,transparent)}
+  50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--warn) 10%,transparent),0 0 14px -2px var(--warn)}
+}
+@keyframes g-risk-pulse{
+  0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--bad) 60%,transparent)}
+  50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--bad) 12%,transparent),0 0 16px -2px var(--bad)}
+}
+.g-deps{position:absolute;inset:0;pointer-events:none;z-index:2;overflow:visible}
+.g-deps line{stroke:var(--txt3);stroke-width:1.4;stroke-dasharray:3 3}
+.g-deps path{fill:var(--txt3)}
 .g-today{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--bad);z-index:3;box-shadow:0 0 8px var(--bad)}
 
 /* keep Today button visible on small screens */
@@ -1100,6 +1128,23 @@ const DB = (() => {
     PROJECTS.forEach(p => p.tasks.forEach(t => {
       if (t.done < 100 && t.e && t.e < todayIso) out.push({ sev:"bad", txt:`${p.product} task overdue: ${t.name} (ended ${t.e} at ${t.done}%)` });
     }));
+    /* overdue lot phases (Gantt at-risk rows) */
+    Object.keys(LOT_TASKS).forEach(lotId => {
+      const lot = LOTS.find(l => l.id === lotId); if (!lot) return;
+      (LOT_TASKS[lotId] || []).forEach(t => {
+        if (t.done < 100 && t.e && t.e < todayIso) out.push({ sev:"bad", txt:`${lotId} ${lot.stage} phase overdue: ${t.name} (ended ${t.e} at ${t.done}%)` });
+      });
+    });
+    /* live SPC signals from the current sample window */
+    try {
+      const { data } = spcSamples();
+      const st = spcStats(data);
+      const ooc = data.filter(v => v > st.ucl || v < st.lcl).length;
+      const we = westernElectric(data, st);
+      const weN = Object.keys(we).length;
+      if (ooc) out.push({ sev:"bad", txt:`SPC: ${ooc} point(s) beyond ±3σ on the FPY control chart — investigate special cause` });
+      if (weN) out.push({ sev:"warn", txt:`SPC: ${weN} Western Electric signal(s) — early drift before a breach` });
+    } catch(e){}
     return out;
   }
   function allAlerts(){ return dynamicAlerts().concat(SYSTEM_ALERTS); }
@@ -2382,10 +2427,14 @@ function mountGantt(){
             const color = barColor(t);
             const showTxt = w > 30;
             const onFill = (w * t.done / 100) >= 24; /* label rides the solid fill? */
-            return `<div class="g-bar ${byLot?"g-bar-lot":""}${t.done>=100?" g-done":""}" data-row="${r.key}" data-phase-idx="${ti}" data-task="${esc(t.name)}"
+            const late = t.done < 100 && t.e && t.e < isoOf(DB.TODAY);
+            const crit = byLot && ti > 0 && t.done < 100 && (r.tasks[ti-1].done >= 100);
+            const cls = `g-bar ${byLot?"g-bar-lot":""}${t.done>=100?" g-done":""}${crit?" g-crit":""}${late?" g-risk":""}`;
+            return `<div class="${cls}" data-row="${r.key}" data-phase-idx="${ti}" data-task="${esc(t.name)}"
               style="left:${l.toFixed(1)}px;width:${w.toFixed(1)}px;--pb:${color}"
-              title="${esc(r.label)} · ${esc(t.name)} · ${t.s} → ${t.e} · ${t.done}% complete"><i class="g-fill" style="width:${t.done}%"></i>${showTxt && t.done>0 ? `<b class="g-txt${onFill?"":" g-txt-lo"}">${t.done}%</b>` : ""}</div>`;
+              title="${esc(r.label)} · ${esc(t.name)} · ${t.s} → ${t.e} · ${t.done}% complete${late?" · ⚠ OVERDUE":""}${crit?" · next in critical chain":""}"><i class="g-fill" style="width:${t.done}%"></i>${showTxt && t.done>0 ? `<b class="g-txt${onFill?"":" g-txt-lo"}">${t.done}%</b>` : ""}<i class="g-grip" title="Drag to extend"></i></div>`;
           }).join("")}
+          ${byLot ? ganttDepsSvg(r, x) : ""}
         </div>
       </div>`;
     }).join("")}
@@ -2415,7 +2464,10 @@ function mountGantt(){
 
   const addBtn = $q("#addTask"); if (addBtn) addBtn.onclick = () => openTaskEditor(null);
 
+  bindGanttDrag(byLot, PX_PER_DAY, d0, DAY);
+
   $q$("#ganttWrap .g-bar").forEach(bar => bar.onclick = () => {
+    if (bar.__dragged){ bar.__dragged = false; return; }
     const rowKey = bar.dataset.row;
     const idx = +bar.dataset.phaseIdx;
     if (byLot){
@@ -2439,7 +2491,78 @@ function mountGantt(){
     <div class="card"><div class="card-head"><h3>Upcoming</h3></div><div class="kpi-val" style="--kc:var(--warn)">${upcoming}</div><div class="kpi-note">not started</div></div>`;
 }
 
-/* ---------- lot phase editor ---------- */
+/* ---------- gantt: dependency arrows (lot mode: consecutive phases in the 5-step flow) ---------- */
+function ganttDepsSvg(r, x){
+  const segs = [];
+  for (let i = 0; i < r.tasks.length - 1; i++){
+    const a = r.tasks[i], b = r.tasks[i+1];
+    const ax = x(a.e) + 2, bx = x(b.s) - 3;
+    if (bx - ax < 5) continue;                       /* phases touch — no room for an arrow */
+    const y1 = 15;
+    segs.push(`<line x1="${ax.toFixed(1)}" y1="${y1}" x2="${(bx-6).toFixed(1)}" y2="${y1}"/>` +
+      `<path d="M${bx.toFixed(1)},${y1} l-6,-3.5 v7 z"/>`);
+  }
+  return `<svg class="g-deps">${segs.join("")}</svg>`;
+}
+
+/* ---------- gantt: drag-to-move + edge-drag-to-extend (pointer events, persisted) ---------- */
+function bindGanttDrag(byLot, pxd, d0, DAY){
+  if (!byLot) return;   /* lot mode only — product tasks stay in the editor */
+  $q$("#ganttWrap .g-bar").forEach(bar => {
+    bar.addEventListener("pointerdown", e => {
+      if (e.button !== 0) return;
+      const kind = e.target.closest(".g-grip") ? "resize" : "move";
+      const rowKey = bar.dataset.row, idx = +bar.dataset.phaseIdx;
+      const orig = (DB.LOT_TASKS[rowKey] || [])[idx];
+      if (!orig) return;
+      const origS = orig.s, origE = orig.e;
+      const spanDays = Math.max(1, Math.round((new Date(origE+"T00:00:00") - new Date(origS+"T00:00:00")) / DAY) + 1);
+      const startX = e.clientX;
+      let lastDelta = null;
+      try { bar.setPointerCapture(e.pointerId); } catch(err){}
+
+      bar.onpointermove = ev => {
+        const d = Math.round((ev.clientX - startX) / pxd);
+        if (d === lastDelta) return;
+        lastDelta = d;
+        let ns = origS, ne = origE;
+        if (kind === "move"){
+          ns = isoAddDays(origS, d); ne = isoAddDays(origE, d);
+        } else {
+          const end = isoAddDays(origS, spanDays - 1 + Math.max(-(spanDays-1), d));
+          ne = end < origS ? origS : end;
+        }
+        bar.style.left = xOf(d0, pxd, ns).toFixed(1) + "px";
+        bar.style.width = Math.max(pxd * 0.9, (xOf(d0, pxd, ne) - xOf(d0, pxd, ns))).toFixed(1) + "px";
+        bar.title = `${bar.dataset.row} · ${orig.name} · ${ns} → ${ne} · ${orig.done}% complete — release to save`;
+      };
+
+      bar.onpointerup = bar.onpointercancel = ev => {
+        bar.onpointermove = bar.onpointerup = bar.onpointercancel = null;
+        try { bar.releasePointerCapture(e.pointerId); } catch(err){}
+        const d = lastDelta == null ? 0 : lastDelta;
+        if (d === 0) return;                          /* plain click → editor via onclick */
+        bar.__dragged = true;                         /* suppress the click that follows a drag */
+        const phases = (DB.LOT_TASKS[rowKey] || []).map(t => {
+          if (t.name !== orig.name) return { ...t };
+          if (kind === "move") return { ...t, s: isoAddDays(orig.s, d), e: isoAddDays(orig.e, d) };
+          const minEnd = orig.s;
+          const e2 = isoAddDays(orig.s, spanDays - 1 + Math.max(-(spanDays-1), d));
+          return { ...t, e: e2 < minEnd ? minEnd : e2 };
+        });
+        const bad = phases.find(t => t.e < t.s);
+        if (bad){ toast("End date must be on or after start date", "warn"); setView("gantt"); return; }
+        DB.updateLotTasks(rowKey, phases);
+        refreshBadges(); buildTicker();
+        toast(`<b>${rowKey}</b> · ${esc(orig.name)} ${kind === "move" ? "moved" : "extended"} → ${phases[idx].s} → ${phases[idx].e}`, "good");
+        setView("gantt");
+      };
+    });
+  });
+}
+function xOf(d0, pxd, iso){ return (new Date(iso+"T00:00:00").getTime() - d0.getTime()) / 864e5 * pxd; }
+function isoAddDays(iso, n){ const d = new Date(iso+"T00:00:00"); d.setDate(d.getDate()+n); return isoOf(d); }
+
 function openLotPhaseEditor(lot, phase){
   openModal(`
     <h2>${lot.id} — ${esc(phase.name)}</h2>

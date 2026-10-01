@@ -499,6 +499,23 @@ const DB = (() => {
     PROJECTS.forEach(p => p.tasks.forEach(t => {
       if (t.done < 100 && t.e && t.e < todayIso) out.push({ sev:"bad", txt:`${p.product} task overdue: ${t.name} (ended ${t.e} at ${t.done}%)` });
     }));
+    /* overdue lot phases (Gantt at-risk rows) */
+    Object.keys(LOT_TASKS).forEach(lotId => {
+      const lot = LOTS.find(l => l.id === lotId); if (!lot) return;
+      (LOT_TASKS[lotId] || []).forEach(t => {
+        if (t.done < 100 && t.e && t.e < todayIso) out.push({ sev:"bad", txt:`${lotId} ${lot.stage} phase overdue: ${t.name} (ended ${t.e} at ${t.done}%)` });
+      });
+    });
+    /* live SPC signals from the current sample window */
+    try {
+      const { data } = spcSamples();
+      const st = spcStats(data);
+      const ooc = data.filter(v => v > st.ucl || v < st.lcl).length;
+      const we = westernElectric(data, st);
+      const weN = Object.keys(we).length;
+      if (ooc) out.push({ sev:"bad", txt:`SPC: ${ooc} point(s) beyond ±3σ on the FPY control chart — investigate special cause` });
+      if (weN) out.push({ sev:"warn", txt:`SPC: ${weN} Western Electric signal(s) — early drift before a breach` });
+    } catch(e){}
     return out;
   }
   function allAlerts(){ return dynamicAlerts().concat(SYSTEM_ALERTS); }

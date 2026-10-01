@@ -302,11 +302,20 @@ td.mono{font-family:var(--mono);font-size:12px}
   overflow:hidden;isolation:isolate;
   background:color-mix(in srgb,var(--pb,#0ea5e9) 14%,transparent);
   border:1px dashed color-mix(in srgb,var(--pb,#0ea5e9) 45%,transparent);
+  touch-action:none;user-select:none;-webkit-user-select:none;
 }
 [data-theme="light"] .g-bar{color:#fff}
 .g-bar:hover{transform:scale(1.015);filter:brightness(1.12)}
+body.g-dragging, body.g-dragging *{cursor:col-resize !important}
+body.g-dragging .g-bar{transition:none}
+.g-bar .g-grip{
+  position:absolute;right:0;top:0;bottom:0;width:8px;cursor:ew-resize;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--pb,#0ea5e9) 55%,transparent));
+  opacity:0;transition:.15s;border-radius:0 7px 7px 0;
+}
+.g-bar:hover .g-grip{opacity:1}
 .g-fill{position:absolute;left:0;top:0;bottom:0;z-index:0;background:var(--pb,#0ea5e9);transition:width .3s}
-.g-txt{position:relative;z-index:1;letter-spacing:.2px}
+.g-txt{position:relative;z-index:1;letter-spacing:.2px;pointer-events:none}
 [data-theme="dark"] .g-txt-lo{color:#e0f2fe;text-shadow:0 1px 2px rgba(2,6,23,.55)}
 [data-theme="light"] .g-txt-lo{color:#0b1220}
 .g-bar.g-done{
@@ -314,6 +323,25 @@ td.mono{font-family:var(--mono);font-size:12px}
   box-shadow:0 4px 16px -3px color-mix(in srgb,var(--pb,#0ea5e9) 60%,transparent),
              0 0 0 1px color-mix(in srgb,var(--pb,#0ea5e9) 55%,transparent);
 }
+.g-bar.g-crit{
+  border:1px solid var(--warn);
+  animation:g-crit-pulse 1.8s ease-in-out infinite;
+}
+.g-bar.g-risk{
+  border:1px solid var(--bad);
+  animation:g-risk-pulse 1.5s ease-in-out infinite;
+}
+@keyframes g-crit-pulse{
+  0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--warn) 55%,transparent)}
+  50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--warn) 10%,transparent),0 0 14px -2px var(--warn)}
+}
+@keyframes g-risk-pulse{
+  0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--bad) 60%,transparent)}
+  50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--bad) 12%,transparent),0 0 16px -2px var(--bad)}
+}
+.g-deps{position:absolute;inset:0;pointer-events:none;z-index:2;overflow:visible}
+.g-deps line{stroke:var(--txt3);stroke-width:1.4;stroke-dasharray:3 3}
+.g-deps path{fill:var(--txt3)}
 .g-today{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--bad);z-index:3;box-shadow:0 0 8px var(--bad)}
 
 /* keep Today button visible on small screens */
