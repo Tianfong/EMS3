@@ -35,24 +35,40 @@ tooling beyond a simple inliner, no network calls in demo mode.
   *Preparation → MBO and Main build → OQC → OK2S → Shipment* with an editable
   phase editor (dates, % done — persisted). Day / Week / Month zoom
   (Ctrl+wheel), ◉ Today, sticky labels, weekend shading.
+  **Interactive:** drag bars to reschedule, drag the right-edge grip to
+  extend (snapped to whole days, persisted, done% preserved), dashed flow
+  arrows between phases, critical-chain flag on the next phase after a
+  completed one, red pulse + alert-feed entries for overdue phases.
+- **Quality / SPC drill-down** — scope the ±3σ control chart to any of the 12
+  lots; the blended baseline is overlaid as a dashed reference and CL/σ/Cpk,
+  signals and CSV export follow the selection.
 - **Editable data** — FACA status/progress, claims (status/ETA/corrective
   action, new claims), Gantt tasks and lot phases. Edits persist to
   `localStorage` and can be reset to baseline from ⚙️ Settings.
 - **Derived UI** — sidebar badges, ticker and alert feed update live after
   every edit.
-- **CSV export** — products, claims, shipments, watch items (UTF-8 BOM).
+- **CSV export & import** — products, claims, shipments, watch items, SPC
+  series (UTF-8 BOM); claims import round-trips the export format (update by
+  id or add rows) via ⚙️ Settings.
+- **PWA** — installable; service worker precaches the shell so the dashboard
+  opens offline on the shop floor.
+- **Dark / light theme**, mobile drawer, responsive down to 360 px.
 - **Dark / light theme**, mobile drawer, responsive down to 360 px.
 
 ## Project layout
 
 ```
-index.html    App shell: sidebar, topbar filter chips, view container
-styles.css    Design system (themes, responsive, gantt, print)
-data.js       DB module: masters, lots, KPIs, SPC, claims, FACA, persistence
-charts.js     Dependency-free SVG charts (line, spark, donut, control, pareto)
-app.js        Router, views, filters, modals, toasts, CSV, DataHub adapter
-build.js      Inlines the above into a single self-contained app.html
-app.html      Built artifact (one-file version of the whole app)
+index.html            App shell: sidebar, topbar filter chips, view container
+styles.css            Design system (themes, responsive, gantt, print)
+data.js               DB module: masters, lots, KPIs, SPC, claims, FACA, persistence
+charts.js             Dependency-free SVG charts (line, spark, donut, control, pareto)
+app.js                Router, views, filters, modals, toasts, CSV, DataHub adapter
+build.js              Inlines the above into a single self-contained app.html
+app.html              Built artifact (one-file version of the whole app)
+sw.js                 PWA service worker (offline shell, stale-while-revalidate)
+manifest.webmanifest  PWA manifest (installable, fan icon)
+server/mes-mock.js    Zero-dependency MES mock implementing the REST contract
+server/test-mes.js    Contract tests for the mock (11 assertions)
 ```
 
 ## Build
@@ -65,9 +81,15 @@ node --check app.js    # optional syntax check; same for charts.js / data.js
 Open `index.html` directly in a browser (modular dev mode) or `app.html`
 (single-file). No server required.
 
-CI (`.github/workflows/ci.yml`) syntax-checks all JS sources, rebuilds
-`app.html`, and fails the run if the committed bundle is out of date — so the
-deployed site and the bundle can never drift.
+```bash
+npm run build   # rebuild app.html from sources
+test            # run MES contract tests (node server/test-mes.js)
+npm run mes     # start the MES mock server on http://127.0.0.1:8787
+```
+
+CI (`.github/workflows/ci.yml`) syntax-checks all JS sources, runs the MES
+contract tests, rebuilds `app.html`, and fails the run if the committed bundle
+is out of date — so the deployed site and the bundle can never drift.
 
 ## REST mode (optional)
 
@@ -76,10 +98,26 @@ and **REST**. Expected contract on the configured base URL:
 
 ```
 GET    /health
-PATCH  /claims/:id
+GET    /claims · /faca   (bonus, for debugging)
 POST   /claims
+PATCH  /claims/:id
 PATCH  /faca/:id
 ```
+
+A zero-dependency mock implementing exactly this contract ships in
+`server/mes-mock.js` (`npm run mes`, port 8787, CORS enabled). Point REST mode
+at `http://127.0.0.1:8787` from the local preview. Browsers may block an
+https page from calling a local http server (Private Network Access) — test
+the live site against it from the local preview instead, or front the mock
+with TLS for production.
+
+## PWA
+
+Served over HTTPS, the dashboard registers a service worker that precaches the
+full shell. It opens offline (network-less shop floor) and can be installed as
+a standalone app from the browser's install prompt. Cache strategy is
+stale-while-revalidate: updates land on the next online visit. Bump `VERSION`
+in `sw.js` to force a shell refresh.
 
 ## Data & persistence
 
