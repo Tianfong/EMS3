@@ -354,28 +354,24 @@ function viewOverview(){
   </div>
   <div id="kpiBody"></div>
 
-  <div class="grid g-23" style="margin-top:14px">
-    <div class="card">
-      <div class="card-head">
-        <h3>Process health</h3>
-        <span class="sub"><span class="pill pur">4 processes</span></span>
-      </div>
-      <div class="flow" id="flowWrap"></div>
-    </div>
-    <div class="card">
-      <div class="card-head">
-        <h3>Live feed & alerts</h3>
-        <span class="sub"><span class="pill good">live</span></span>
-      </div>
-      <div class="list" id="alertList"></div>
-    </div>
-  </div>
-
-  <div class="sec-head"><h2>Products at a glance</h2><div class="rule"></div><span class="pill">${snap.nProducts} of ${DB.PRODUCTS.length} shown</span></div>
+  <div class="sec-head"><h2>Products & processes</h2><div class="rule"></div><span class="pill">${DB.PROCESSES.length} processes · ${snap.nProducts} of ${DB.PRODUCTS.length} products</span></div>
   <div class="card" style="padding:6px 10px">
+    <div class="card-head"><h3>Products at a glance</h3><span class="sub"><span class="pill">sortable — click a row for detail</span></span></div>
     <div class="table-wrap" style="border:none">
       ${productTableHTML()}
     </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="card-head"><h3>Process health</h3><span class="sub"><span class="pill pur">flow: rotor → stator → fan → test</span></span></div>
+    <div class="flow" id="flowWrap"></div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="card-head">
+      <h3>Live feed & alerts</h3>
+      <span class="sub"><span class="pill good">live</span></span>
+    </div>
+    <div class="list" id="alertList"></div>
   </div>`;
 }
 
