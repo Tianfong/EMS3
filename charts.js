@@ -109,8 +109,9 @@ const CHARTS = (() => {
     const W = 720, H = 250, padL = 40, padR = 14, padT = 18, padB = 26;
     const iw = W - padL - padR, ih = H - padT - padB;
     const cl = opts.cl, ucl = opts.ucl, lcl = opts.lcl;
-    const hi = Math.max(ucl, ...pts) + (ucl - cl) * 0.35;
-    const lo = Math.min(lcl, ...pts) - (cl - lcl) * 0.35;
+    const bl = opts.baseline ? (Array.isArray(opts.baseline) ? { data: opts.baseline } : opts.baseline) : null;
+    const hi = Math.max(ucl, ...pts, ...(bl ? bl.data : [])) + (ucl - cl) * 0.35;
+    const lo = Math.min(lcl, ...pts, ...(bl ? bl.data : [])) - (cl - lcl) * 0.35;
     const X = i => padL + i*iw/(pts.length-1);
     const Y = v => padT + (1 - (v-lo)/(hi-lo))*ih;
     const css = getComputedStyle(document.documentElement);
@@ -135,6 +136,8 @@ const CHARTS = (() => {
       ${lim(cl, "var(--good)", "CL " + (+cl).toFixed(2))}
       ${lim(lcl, bad, "LCL " + (+lcl).toFixed(2))}
       ${xLabels}
+      ${bl ? `<path d="${"M"+bl.data.map((v,i) => X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L")}" fill="none" stroke="${txt3}" stroke-width="1.5" stroke-dasharray="5 4" opacity=".7"/>
+      <text x="${padL+4}" y="${padT+9}" font-size="8.5" fill="${txt3}">dashed = product baseline</text>` : ""}
       <path d="${d}" fill="none" stroke="${acc}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
       ${ooc.map(i => `<circle cx="${X(i).toFixed(1)}" cy="${Y(pts[i]).toFixed(1)}" r="5" fill="none" stroke="${bad}" stroke-width="2"/>
         <circle cx="${X(i).toFixed(1)}" cy="${Y(pts[i]).toFixed(1)}" r="2" fill="${bad}"/>`).join("")}

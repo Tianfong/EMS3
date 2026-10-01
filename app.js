@@ -10,6 +10,7 @@ const STATE = {
   side: "ALL",
   line: "ALL",
   lot: "ALL",
+  spcLot: "ALL",
   range: "30D",
   sortKey: null,
   sortDir: 1,
@@ -799,7 +800,11 @@ function viewQuality(){
     <div class="card">
       <div class="card-head">
         <h3>FPY control chart (X-chart, ±3σ)</h3>
-        <span class="sub"><span class="pill acc" id="spcVal">—</span></span>
+        <span class="sub"><span class="pill acc" id="spcVal">—</span> <button class="mini-btn" id="spcCsv" title="Export SPC series as CSV">⬇</button></span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin:2px 0 8px;flex-wrap:wrap">
+        <select id="spcLot" class="topbar-select" style="min-width:168px" aria-label="SPC scope — production lot"></select>
+        <span class="item-sub" id="spcScopeNote">Baseline view — blended FPY across lots in filter scope.</span>
       </div>
       <div id="spcChart"></div>
     </div>
@@ -827,19 +832,38 @@ function viewQuality(){
 const WE_NAMES = { R1:"Beyond 3σ", R2:"2 of 3 beyond 2σ", R3:"4 of 5 beyond 1σ", R4:"8 consecutive one side" };
 
 function mountQuality(){
-  const { labels, data } = DB.spcSamples();
+  /* ---- SPC scope: blended baseline or a single production lot ---- */
+  const sel = $q("#spcLot");
+  sel.innerHTML = `<option value="ALL">Product baseline — blended</option>` +
+    DB.LOTS.map(l => `<option value="${l.id}">${l.id} · ${l.stage} lot</option>`).join("");
+  sel.value = STATE.spcLot && DB.LOTS.some(l => l.id === STATE.spcLot) ? STATE.spcLot : "ALL";
+  sel.onchange = () => { STATE.spcLot = sel.value; mountQuality(); };
+  const lotId = sel.value === "ALL" ? null : sel.value;
+  const base = DB.spcSamples();                        // blended baseline for scope
+  const cur  = lotId ? DB.spcSamples(lotId) : base;    // selected series
+  const { labels, data } = cur;
   const LSL = 93.0;                        // FPY spec floor
   const st = DB.spcStats(data);
   const cpk = (st.cl - LSL) / (3 * st.sd);
   const we = DB.westernElectric(data, st);
   const weCount = Object.keys(we).length;
+  const scope = lotId ? `${lotId} lot` : "Baseline";
   const res = CHARTS.controlChart($q("#spcChart"), {
     data, labels, cl: st.cl, ucl: st.ucl, lcl: st.lcl, we,
+    baseline: lotId ? base.data : null,
     onHover: (i, ooc, rules) => $q("#spcVal").textContent = `${labels[i]} · ${data[i]}%${ooc ? " · ⚠ OUT OF CONTROL" : rules ? " · " + rules.map(r=>WE_NAMES[r]).join(" + ") : ""}`,
-    onOut: () => $q("#spcVal").textContent = `CL ${st.cl.toFixed(2)}% · σ ${st.sd.toFixed(2)} · ${weCount} WE signal${weCount===1?"":"s"}`,
+    onOut: () => $q("#spcVal").textContent = `${scope} · CL ${st.cl.toFixed(2)}% · σ ${st.sd.toFixed(2)} · ${weCount} WE signal${weCount===1?"":"s"}`,
   });
-  $q("#spcVal").textContent = `CL ${st.cl.toFixed(2)}% · σ ${st.sd.toFixed(2)} · ${weCount} WE signal${weCount===1?"":"s"}`;
+  $q("#spcVal").textContent = `${scope} · CL ${st.cl.toFixed(2)}% · σ ${st.sd.toFixed(2)} · ${weCount} WE signal${weCount===1?"":"s"}`;
   $q("#oocCount").textContent = `${res.outOfControl} beyond limits · ${weCount} WE signals`;
+  $q("#spcScopeNote").textContent = lotId
+    ? `Lot ${lotId} overlay — dashed gray line is the blended product baseline (CL ${DB.spcStats(base.data).cl.toFixed(2)}%).`
+    : "Baseline view — blended FPY across lots in filter scope. Pick a lot to overlay it.";
+  $q("#spcCsv").onclick = () => exportCSV(`fdb-spc-${(lotId || "baseline").toLowerCase()}.csv`, [
+    ["Sample","Date","FPY%","CL","UCL","LCL","Signal"],
+    ...cur.data.map((v,i) => [i+1, cur.labels[i], v, st.cl.toFixed(2), st.ucl.toFixed(2), st.lcl.toFixed(2),
+      res.ooc.includes(i) ? "beyond-3sigma" : (we[i] ? we[i].join("+") : "")]),
+  ]);
 
   // known special causes (sample-index keyed)
   const causes7 = {
@@ -851,14 +875,15 @@ function mountQuality(){
 
   // consolidated signal list: ±3σ violations first, then WE rules
   const signals = [];
-  res.ooc.forEach(i => signals.push({ i, sev:"bad", label:"Beyond ±3σ", note:(causes7[i]||{}).t || "Investigate immediately" }));
+  res.ooc.forEach(i => signals.push({ i, sev:"bad", label:"Beyond ±3σ", note: lotId ? "Lot-level breach — check this lot's phases in the Gantt" : (causes7[i]||{}).t || "Investigate immediately" }));
   Object.keys(we).map(Number).sort((a,b)=>a-b).forEach(i => {
     if (res.ooc.includes(i)) return;
     signals.push({ i, sev:"warn", label:we[i].map(r=>WE_NAMES[r]).join(" + "), note:"Early-warning pattern — review before it becomes a breach" });
   });
 
   // stat cards
-  const defects = DB.DEFECTS.filter(d => STATE.product==="ALL" || d.product===STATE.product);
+  const lotProdIds = lotId ? DB.PRODUCTS.filter(p => (DB.PRODUCT_LOTS[p.id]||[]).includes(lotId)).map(p => p.id) : null;
+  const defects = DB.DEFECTS.filter(d => (STATE.product==="ALL" || d.product===STATE.product) && (!lotProdIds || lotProdIds.includes(d.product)));
   const totalDef = defects.reduce((s,d)=>s+d.qty,0);
   const vol = filteredProducts().reduce((s,p)=>s+p.vol.ytd,0) || 1;
   const ppm = Math.round(totalDef / vol * 1e6);
@@ -877,7 +902,7 @@ function mountQuality(){
     </div>`).join("");
 
   $q("#oocList").innerHTML = signals.length ? signals.map(s => {
-    const c = causes7[s.i];
+    const c = lotId ? null : causes7[s.i];
     return `<div class="item" style="cursor:default">
       <div class="item-ico" style="background:var(--${s.sev}-soft);color:var(--${s.sev})">${s.sev==="bad"?"⚠":"∿"}</div>
       <div class="item-body"><div class="item-title">${labels[s.i]} · ${data[s.i]}% — ${esc(s.label)}</div><div class="item-sub">${c ? esc(c.t) + " — " + esc(c.d) : esc(s.note)}</div></div>

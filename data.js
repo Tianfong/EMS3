@@ -374,24 +374,37 @@ const DB = (() => {
     }
     return hits;
   }
-  function spcSamples(){
+  function spcSamples(lotId){
     const n = 30;
     const labels = labelsForSeries(n);
-    const prods = PRODUCTS.filter(p => STATE.product==="ALL" || p.id===STATE.product);
-    const stages = STAGES.filter(s => STATE.stage==="ALL" || s===STATE.stage);
+    const lot = lotId && lotId !== "ALL" ? LOTS.find(l => l.id === lotId) : null;
+    const prods = lot
+      ? PRODUCTS.filter(p => (PRODUCT_LOTS[p.id] || []).includes(lot.id))
+      : PRODUCTS.filter(p => STATE.product==="ALL" || p.id===STATE.product);
+    const stages = lot ? [lot.stage] : STAGES.filter(s => STATE.stage==="ALL" || s===STATE.stage);
+    /* deterministic per-lot signature — same lot always renders the same series */
+    const lotSeed = lot ? lot.id.charCodeAt(2)*13 + lot.id.charCodeAt(3)*29 + lot.id.charCodeAt(1) : 0;
+    const lotOff = lot ? ({P1:-1.1,P2:-0.6,EVT:-0.25,DVT:0.1,PVT:0.2}[lot.stage]||0) + ((lotSeed % 5) - 2) * 0.16 : 0;
     const data = [];
     for (let i=0;i<n;i++){
       let v = 96.4 + (i/n)*0.35;                 // gentle improving drift
       v += Math.sin(i/3.1)*0.32;                 // natural variation
-      // inject realistic special-cause events
-      if (i===7)  v -= 1.9;                      // X4152 acoustic event
-      if (i===16) v -= 1.2;                      // torque drift week
-      if (i===23) v -= 2.4;                      // press-fit OOS spike
-      if (i===28) v += 0.7;
+      if (lot){
+        /* lot-level view: family curve + lot signature + its own shifted echoes of the causes */
+        v += lotOff + Math.sin(i/2.1 + lotSeed % 7)*0.22 + (((lotSeed + i*7) % 9) - 4)*0.06;
+        const ev = { 7:-1.9, 16:-1.2, 23:-2.4, 28:+0.7 };
+        for (const k in ev){ if (i === (Number(k) + lotSeed % 5) % n) v += ev[k]; }
+      } else {
+        // inject realistic special-cause events
+        if (i===7)  v -= 1.9;                    // X4152 acoustic event
+        if (i===16) v -= 1.2;                    // torque drift week
+        if (i===23) v -= 2.4;                    // press-fit OOS spike
+        if (i===28) v += 0.7;
+      }
       const pb = prods.length ? prods.reduce((s,p)=>s+({P1:-3.2,P2:-1.8,EVT:-1.2,DVT:-0.4,PVT:0}[p.stage]||0),0)/prods.length : 0;
       data.push(+(v + pb).toFixed(2));
     }
-    return { labels, data, stages };
+    return { labels, data, stages, lot: lot ? lot.id : null };
   }
   function labelsForSeries(n){
     const out = [];
