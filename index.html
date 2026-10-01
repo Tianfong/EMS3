@@ -17,6 +17,8 @@
 <meta name="twitter:description" content="Live NPI monitoring dashboard: KPIs, SPC quality, lot Gantt, claims, FACA and shipments for FDB fan lines L1–L4."/>
 <meta name="twitter:image" content="https://tianfong.github.io/EMS3/og-image.svg"/>
 <meta name="theme-color" content="#0ea5e9"/>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="apple-touch-icon" href="icon.svg"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet"/>
@@ -124,5 +126,11 @@
 <script src="data.js"></script>
 <script src="charts.js"></script>
 <script src="app.js"></script>
+<script>
+/* PWA: register the offline service worker (secure contexts only) */
+if ("serviceWorker" in navigator && (location.protocol === "https:" || ["localhost", "127.0.0.1"].includes(location.hostname))){
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
 </body>
 </html>
