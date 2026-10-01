@@ -399,6 +399,21 @@ body.g-dragging .g-bar{transition:none}
 @keyframes slide{from{opacity:0;transform:translateX(24px)}}
 
 /* section head */
+/* sticky overview section nav */
+.sec-nav{
+  position:sticky;top:59px;z-index:30;display:flex;align-items:center;gap:4px;flex-wrap:wrap;
+  margin:0 0 14px;padding:6px 10px;border:1px solid var(--line);border-radius:12px;
+  background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+}
+.sec-nav a{
+  font-size:11px;font-weight:700;color:var(--txt3);text-decoration:none;
+  padding:4px 11px;border-radius:8px;transition:.15s;cursor:pointer;white-space:nowrap;
+}
+.sec-nav a:hover{color:var(--txt);background:var(--glass)}
+.sec-nav a.on{color:var(--acc);background:var(--acc-soft)}
+.sec-nav .sn-dot{width:4px;height:4px;border-radius:50%;background:var(--line2);flex:none}
+#kpiCards,#ovPipeline,#ovDeepDive,#ovProducts,#ovAlerts{scroll-margin-top:116px}
+
 .sec-head{display:flex;align-items:center;gap:10px;margin:20px 0 12px}
 .sec-head h2{font-size:14px;font-weight:800;letter-spacing:.3px}
 .sec-head .rule{flex:1;height:1px;background:var(--line)}

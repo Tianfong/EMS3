@@ -131,6 +131,31 @@ function exportShipments(){
     ...DB.SHIPMENTS.map(s => [s.week, s.commit, s.actual, (s.actual/s.commit*100).toFixed(1)])]);
 }
 
+/* ---------- overview section nav (bound once; queries live DOM) ---------- */
+let secNavBound = false, secNavSpy = null;
+function bindSecNavSpy(){
+  if (secNavBound){ secNavSpy && secNavSpy(); return; }
+  secNavBound = true;
+  let ticking = false;
+  const spy = () => {
+    const nav = $q("#secNav"); if (!nav) return;
+    const links = [...nav.querySelectorAll("a[data-target]")];
+    const targets = links.map(l => document.getElementById(l.dataset.target)).filter(Boolean);
+    if (!targets.length) return;
+    const y = window.scrollY + 150;
+    let idx = 0;
+    targets.forEach((t, i) => { if (t.getBoundingClientRect().top + window.scrollY <= y) idx = i; });
+    if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 40) idx = targets.length - 1;
+    links.forEach((l, i) => l.classList.toggle("on", i === idx));
+  };
+  window.addEventListener("scroll", () => {
+    if (!ticking){ ticking = true; setTimeout(() => { spy(); ticking = false; }, 60); }
+  }, { passive:true });
+  window.addEventListener("resize", spy, { passive:true });
+  secNavSpy = spy;
+  spy();
+}
+
 /* ---------- sortable products ---------- */
 const SORTABLE = ["id","name","stage","lot","side","fpy","fy","uph","oee","ship","claim","vol"];
 function sortedProducts(){
@@ -334,9 +359,16 @@ function viewOverview(){
   const snap = kpiSnapshot();
 
   return `
+  <nav class="sec-nav" id="secNav" aria-label="Page sections">
+    <a data-target="kpiCards">KPIs</a><span class="sn-dot"></span>
+    <a data-target="ovPipeline">Pipeline</a><span class="sn-dot"></span>
+    <a data-target="ovDeepDive">Deep dive</a><span class="sn-dot"></span>
+    <a data-target="ovProducts">Products</a><span class="sn-dot"></span>
+    <a data-target="ovAlerts">Alerts</a>
+  </nav>
   <div class="grid g-kpi" id="kpiCards">${""}</div>
 
-  <div class="grid g-2" style="margin-top:14px">
+  <div class="grid g-2" style="margin-top:14px" id="ovPipeline">
     <div class="card">
       <div class="card-head"><h3>NPI stage pipeline</h3><span class="sub"><span class="pill">units & FPY</span></span></div>
       <div class="pipe" id="pipeWrap"></div>
@@ -349,13 +381,13 @@ function viewOverview(){
     </div>
   </div>
 
-  <div class="sec-head"><h2>KPI Deep Dive</h2><div class="rule"></div><span class="pill">${DB.KPIS.map(k=>k.name).join(" · ")}</span></div>
+  <div class="sec-head" id="ovDeepDive"><h2>KPI Deep Dive</h2><div class="rule"></div><span class="pill">${DB.KPIS.map(k=>k.name).join(" · ")}</span></div>
   <div class="seg" id="kpiTabs" style="margin:2px 0 14px;display:inline-flex">
     ${DB.KPIS.map(k=>`<button data-kpi="${k.id}" class="${k.id===(STATE.kpiFocus||"fpy")?"on":""}">${k.name}</button>`).join("")}
   </div>
   <div id="kpiBody"></div>
 
-  <div class="sec-head"><h2>Products & processes</h2><div class="rule"></div><span class="pill">${DB.PROCESSES.length} processes · ${snap.nProducts} of ${DB.PRODUCTS.length} products</span></div>
+  <div class="sec-head" id="ovProducts"><h2>Products & processes</h2><div class="rule"></div><span class="pill">${DB.PROCESSES.length} processes · ${snap.nProducts} of ${DB.PRODUCTS.length} products</span></div>
   <div class="card" style="padding:6px 10px">
     <div class="card-head"><h3>Products at a glance</h3><span class="sub"><span class="pill">sortable — click a row for detail</span></span></div>
     <div class="table-wrap" style="border:none">
@@ -367,7 +399,7 @@ function viewOverview(){
     <div class="flow" id="flowWrap"></div>
   </div>
 
-  <div class="card" style="margin-top:14px">
+  <div class="card" style="margin-top:14px" id="ovAlerts">
     <div class="card-head">
       <h3>Live feed & alerts</h3>
       <span class="sub"><span class="pill good">live</span></span>
@@ -379,6 +411,13 @@ function viewOverview(){
 
 function mountOverview(){
   const snap = kpiSnapshot();
+  bindSecNavSpy();
+  $q$("#secNav a[data-target]").forEach(a => {
+    a.onclick = e => {
+      e.preventDefault();
+      document.getElementById(a.dataset.target)?.scrollIntoView({ behavior:"smooth", block:"start" });
+    };
+  });
   renderKpiCards($q("#kpiCards"), snap);
 
   // KPI cards jump into the embedded deep dive on the matching tab
