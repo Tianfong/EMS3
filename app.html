@@ -1740,6 +1740,12 @@ function viewOverview(){
     </div>
   </div>
 
+  <div class="sec-head"><h2>KPI Deep Dive</h2><div class="rule"></div><span class="pill">${DB.KPIS.map(k=>k.name).join(" · ")}</span></div>
+  <div class="seg" id="kpiTabs" style="margin:2px 0 14px;display:inline-flex">
+    ${DB.KPIS.map(k=>`<button data-kpi="${k.id}" class="${k.id===(STATE.kpiFocus||"fpy")?"on":""}">${k.name}</button>`).join("")}
+  </div>
+  <div id="kpiBody"></div>
+
   <div class="grid g-23" style="margin-top:14px">
     <div class="card">
       <div class="card-head">
@@ -1756,12 +1762,6 @@ function viewOverview(){
       <div class="list" id="alertList"></div>
     </div>
   </div>
-
-  <div class="sec-head"><h2>KPI Deep Dive</h2><div class="rule"></div><span class="pill">${DB.KPIS.map(k=>k.name).join(" · ")}</span></div>
-  <div class="seg" id="kpiTabs" style="margin:2px 0 14px;display:inline-flex">
-    ${DB.KPIS.map(k=>`<button data-kpi="${k.id}" class="${k.id===(STATE.kpiFocus||"fpy")?"on":""}">${k.name}</button>`).join("")}
-  </div>
-  <div id="kpiBody"></div>
 
   <div class="sec-head"><h2>Products at a glance</h2><div class="rule"></div><span class="pill">${snap.nProducts} of ${DB.PRODUCTS.length} shown</span></div>
   <div class="card" style="padding:6px 10px">
