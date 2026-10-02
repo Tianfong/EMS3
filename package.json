@@ -5,6 +5,7 @@
   "description": "FDB NPI Command Center — zero-dependency NPI monitoring dashboard for FDB fan manufacturing",
   "scripts": {
     "build": "node build.js",
+    "icons": "node tools/make-icons.js",
     "dev": "node build.js && node server/mes-mock.js",
     "mes": "node server/mes-mock.js",
     "test": "node server/test-mes.js"

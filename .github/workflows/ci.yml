@@ -25,19 +25,26 @@ jobs:
           node --check charts.js
           node --check data.js
           node --check build.js
+          node --check sw.js
+          node --check tools/make-icons.js
 
       - name: MES mock contract tests
         run: npm test
 
+      - name: Regenerate PWA icons
+        run: node tools/make-icons.js
+
       - name: Rebuild app.html
         run: node build.js
 
-      - name: Fail if committed app.html is stale
+      - name: Fail if generated artefacts are stale
         run: |
-          if [ -n "$(git status --porcelain app.html)" ]; then
-            echo "::error::app.html is out of date with the sources."
-            echo "::error::Run 'node build.js' locally and commit the result."
-            git diff --stat -- app.html
+          stale=$(git status --porcelain app.html icon-192.png icon-512.png)
+          if [ -n "$stale" ]; then
+            echo "::error::Generated artefacts are out of date with the sources."
+            echo "::error::Run 'node build.js && node tools/make-icons.js' locally and commit the result."
+            echo "$stale"
+            git diff --stat -- app.html icon-192.png icon-512.png
             exit 1
           fi
-          echo "app.html is in sync with sources."
+          echo "app.html and PWA icons are in sync with sources."

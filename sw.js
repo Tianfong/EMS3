@@ -7,10 +7,11 @@
    revalidate), so the dashboard opens instantly and keeps working
    on the shop floor without a network. Bump VERSION to invalidate.
    ============================================================ */
-const VERSION = "fdb-npi-v1";
+const VERSION = "fdb-npi-v2";
 const SHELL = [
   "./", "./index.html", "./styles.css", "./data.js", "./charts.js", "./app.js",
-  "./app.html", "./manifest.webmanifest", "./icon.svg", "./og-image.svg", "./404.html",
+  "./app.html", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png",
+  "./og-image.svg", "./404.html",
 ];
 
 self.addEventListener("install", e => {
