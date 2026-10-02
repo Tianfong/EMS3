@@ -251,6 +251,22 @@ td.mono{font-family:var(--mono);font-size:12px}
 .bar i.w{background:linear-gradient(90deg,var(--warn),#f59e0b)}
 .bar i.b{background:linear-gradient(90deg,var(--bad),#ef4444)}
 
+/* products table: inline tools + process-gate mini-map */
+.tbl-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:2px 6px 10px}
+.mini-input{
+  background:var(--glass);border:1px solid var(--line2);color:var(--txt);
+  border-radius:8px;padding:6px 10px;font-size:12px;min-width:230px;font-family:inherit;
+}
+.mini-input:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-soft)}
+.mini-input::placeholder{color:var(--txt3)}
+.th-plain{white-space:nowrap}
+.gate-map{display:inline-flex;gap:3px;align-items:center}
+.gd{
+  width:8px;height:8px;border-radius:50%;display:inline-block;
+  background:var(--glass);border:1px solid var(--line2);transition:background .2s,border-color .2s;
+}
+.gd.on{background:var(--acc);border-color:var(--acc)}
+
 /* customer health card */
 .cust{display:flex;flex-direction:column;gap:7px;padding-bottom:12px;border-bottom:1px solid var(--line)}
 .cust:last-child{border-bottom:none;padding-bottom:0}

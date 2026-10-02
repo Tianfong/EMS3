@@ -276,6 +276,22 @@ td.mono{font-family:var(--mono);font-size:12px}
 .bar i.w{background:linear-gradient(90deg,var(--warn),#f59e0b)}
 .bar i.b{background:linear-gradient(90deg,var(--bad),#ef4444)}
 
+/* products table: inline tools + process-gate mini-map */
+.tbl-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:2px 6px 10px}
+.mini-input{
+  background:var(--glass);border:1px solid var(--line2);color:var(--txt);
+  border-radius:8px;padding:6px 10px;font-size:12px;min-width:230px;font-family:inherit;
+}
+.mini-input:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-soft)}
+.mini-input::placeholder{color:var(--txt3)}
+.th-plain{white-space:nowrap}
+.gate-map{display:inline-flex;gap:3px;align-items:center}
+.gd{
+  width:8px;height:8px;border-radius:50%;display:inline-block;
+  background:var(--glass);border:1px solid var(--line2);transition:background .2s,border-color .2s;
+}
+.gd.on{background:var(--acc);border-color:var(--acc)}
+
 /* customer health card */
 .cust{display:flex;flex-direction:column;gap:7px;padding-bottom:12px;border-bottom:1px solid var(--line)}
 .cust:last-child{border-bottom:none;padding-bottom:0}
@@ -1435,6 +1451,8 @@ const CHARTS = (() => {
 const STATE = {
   view: "overview",
   plant: "ALL",           /* "ALL" | "A" | "B" — partitions lots, fixtures & KPI baselines */
+  tblSearch: "",          /* products-table inline search */
+  tblStage: "ALL",        /* products-table stage pill filter */
   product: "ALL",
   stage: "ALL",
   side: "ALL",
@@ -1598,6 +1616,15 @@ function sortedProducts(){
       vol:p.vol.ytd/p.vol.target })[key];
   };
   const arr = [...filteredProducts()];
+  /* inline table filters (search box + stage pills) sit on top of the global scope */
+  const q = STATE.tblSearch.toLowerCase();
+  const searched = arr.filter(p => !q ||
+    p.id.toLowerCase().includes(q) ||
+    p.name.toLowerCase().includes(q) ||
+    p.customer.toLowerCase().includes(q) ||
+    (p.machine || "").toLowerCase().includes(q));
+  const pills = searched.filter(p => STATE.tblStage === "ALL" || p.stage === STATE.tblStage);
+  arr.length = 0; arr.push(...pills);
   if (key) arr.sort((a,b) => { const x = val(a), y = val(b); return (x<y?-1:x>y?1:0) * STATE.sortDir; });
   return arr;
 }
@@ -2034,6 +2061,15 @@ function customerHealthHTML(){
   }).join("");
 }
 
+/* which processes gate a product at its current stage */
+const PROC_GATE = { P1:["rotor","pillow"], P2:["rotor","pillow"], EVT:["pillow","fan"], DVT:["fan","test"], PVT:["fan","test"] };
+function gateMapHTML(p){
+  const on = PROC_GATE[p.stage] || [];
+  return `<span class="gate-map" title="${on.length ? "gates: " + on.map(id => (DB.PROCESSES.find(x=>x.id===id)||{}).name).join(", ") : "no gate in this stage"}">` +
+    DB.PROCESSES.map(pr => `<i class="gd ${on.includes(pr.id)?"on":""}" title="${esc(pr.name)}"></i>`).join("") +
+    `</span>`;
+}
+
 function productTableHTML(){
   const prods = sortedProducts();
   const arrow = key => STATE.sortKey===key ? `<span class="arr">${STATE.sortDir===1?"▲":"▼"}</span>` : "";
@@ -2048,6 +2084,7 @@ function productTableHTML(){
       <td>${(DB.PRODUCT_LOTS[p.id]||[]).join(" · ")}</td>
       <td>${p.side}</td>
       <td><span class="pill">${p.machine || "—"}</span></td>
+      <td>${gateMapHTML(p)}</td>
       <td class="num"><span class="pill ${fpyCls}">${k.fpy.toFixed(1)}%</span></td>
       <td class="num">${k.fy.toFixed(1)}%</td>
       <td class="num">${k.uph}</td>
@@ -2064,13 +2101,14 @@ function productTableHTML(){
   }).join("");
   return `<table>
     <thead><tr>
-      ${["id","name","stage","lot","side","machine","fpy","fy","uph","oee","ship","claim","vol"]
+      ${["id","name","stage","lot","side","machine","gates","fpy","fy","uph","oee","ship","claim","vol"]
         .map(key => {
+          if (key === "gates") return `<th class="th-plain">Process gates</th>`;
           const label = { id:"Product", name:"Model", stage:"Stage", lot:"Lots", side:"Side", machine:"MF", fpy:"FPY", fy:"FY", uph:"UPH", oee:"OEE", ship:"Ship %", claim:"Claims/FACA", vol:"YTD Volume" }[key];
           return `<th data-sort="${key}">${label} ${arrow(key)}</th>`;
         }).join("")}
     </tr></thead>
-    <tbody>${rows || `<tr><td colspan="13" class="empty">No products match filters</td></tr>`}</tbody>
+    <tbody>${rows || `<tr><td colspan="14" class="empty">No products match filters</td></tr>`}</tbody>
   </table>`;
 }
 
@@ -2079,8 +2117,17 @@ function bindSort(){
     const key = th.dataset.sort;
     if (STATE.sortKey === key) STATE.sortDir *= -1;
     else { STATE.sortKey = key; STATE.sortDir = 1; }
-    if (STATE.view === "products"){ $q("#viewArea .table-wrap").innerHTML = productTableHTML(); bindSort(); }
+    if (STATE.view === "products"){ const w = $q("#prodTableWrap"); if (w){ w.innerHTML = productTableHTML(); bindSort(); } }
   });
+}
+/* re-render just the table so the search box keeps focus while typing */
+function refreshProductTable(){
+  const w = $q("#prodTableWrap");
+  if (!w) return;
+  w.innerHTML = productTableHTML();
+  bindSort();
+  const c = $q("#prodCount");
+  if (c){ const n = sortedProducts().length; c.textContent = `${n} product${n===1?"":"s"}`; }
 }
 
 function viewProducts(){
@@ -2090,11 +2137,15 @@ function viewProducts(){
     <div class="card-head" style="padding:10px 6px 4px">
       <h3>Product portfolio</h3>
       <span class="sub">
-        <span class="pill acc">${filteredProducts().length} products</span>
+        <span class="pill acc" id="prodCount">${filteredProducts().length} products</span>
         <button class="mini-btn" id="exportProducts">⬇ CSV</button>
       </span>
     </div>
-    <div class="table-wrap" style="border:none">${productTableHTML()}</div>
+    <div class="tbl-tools">
+      <input id="prodSearch" class="mini-input" type="search" placeholder="Search id, model, customer, fixture…" value="${esc(STATE.tblSearch)}" aria-label="Search products"/>
+      <div class="seg" id="tblStageSeg" role="group" aria-label="Stage pill filter" style="display:inline-flex;flex-wrap:wrap"></div>
+    </div>
+    <div class="table-wrap" id="prodTableWrap" style="border:none">${productTableHTML()}</div>
   </div>
   <div class="grid g-2" style="margin-top:14px">
     <div class="card">
@@ -2112,6 +2163,22 @@ function mountProducts(){
   renderKpiCards($q("#kpiCards"), kpiSnapshot());
   bindSort();
   const eb = $q("#exportProducts"); if (eb) eb.onclick = exportProducts;
+
+  // inline search + stage pills — update the rows live, without re-rendering the tools
+  const seg = $q("#tblStageSeg");
+  if (seg){
+    const inScope = DB.STAGES.filter(s => filteredProducts().some(p => p.stage === s));
+    seg.innerHTML = `<button data-v="ALL" class="${STATE.tblStage==="ALL"?"on":""}">All</button>` +
+      inScope.map(s => `<button data-v="${s}" class="${STATE.tblStage===s?"on":""}">${s}</button>`).join("");
+    seg.querySelectorAll("button").forEach(b => b.onclick = () => {
+      STATE.tblStage = b.dataset.v;
+      seg.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      refreshProductTable();
+    });
+  }
+  const inp = $q("#prodSearch");
+  if (inp) inp.oninput = () => { STATE.tblSearch = inp.value; refreshProductTable(); };
+  const c = $q("#prodCount"); if (c){ const n = sortedProducts().length; c.textContent = `${n} product${n===1?"":"s"}`; }
   $q("#prodFpyBars").innerHTML = sortedProducts().map(p => {
     const k = DB.PRODUCT_KPI[p.id];
     const w = (k.fpy-84)/(100-84)*100;
