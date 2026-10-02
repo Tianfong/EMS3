@@ -251,6 +251,16 @@ td.mono{font-family:var(--mono);font-size:12px}
 .bar i.w{background:linear-gradient(90deg,var(--warn),#f59e0b)}
 .bar i.b{background:linear-gradient(90deg,var(--bad),#ef4444)}
 
+/* customer health card */
+.cust{display:flex;flex-direction:column;gap:7px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.cust:last-child{border-bottom:none;padding-bottom:0}
+.cust-top{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.cust-bar{display:flex;align-items:center;gap:8px}
+.cust-bar .bar{flex:1}
+.cust-bar .mono{font-size:11px;color:var(--txt2);min-width:44px;text-align:right}
+.cust-k{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);width:26px}
+.cust-sub{font-size:11px;color:var(--txt3);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
 /* process flow */
 .flow{display:flex;align-items:center;gap:0;overflow-x:auto;padding:8px 2px}
 .flow-node{
@@ -500,6 +510,7 @@ body.g-dragging .g-bar{transition:none}
   .filter-chip.keep{display:flex}
   #reportBtn{display:none}
   .filter-chip:has(#productSel){display:flex}
+  .filter-chip:has(#plantSeg){display:flex}   /* plant is the outermost partition — keep it reachable */
 }
 @media (max-width:760px){
   .g-kpi{grid-template-columns:repeat(2,1fr)}

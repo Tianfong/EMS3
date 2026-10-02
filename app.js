@@ -428,15 +428,31 @@ function viewOverview(){
   <div class="card" style="margin-top:14px">
     <div class="card-head"><h3>Process health</h3><span class="sub"><span class="pill pur">flow: rotor → stator → fan → test</span></span></div>
     <div class="flow" id="flowWrap"></div>
-  </div>
-
-  <div class="card" style="margin-top:14px" id="ovAlerts">
-    <div class="card-head">
-      <h3>Live feed & alerts</h3>
-      <span class="sub"><span class="pill good">live</span></span>
+  </div><div class="grid g-2" style="margin-top:14px" id="ovAlerts">
+    <div class="card">
+      <div class="card-head">
+        <h3>Customer health</h3>
+        <span class="sub"><span class="pill">FPY / OEE by account</span></span>
+      </div>
+      <div id="custList" style="display:flex;flex-direction:column;gap:14px"></div>
     </div>
-    <div class="seg" id="alertSeg" style="margin:0 0 12px;display:inline-flex;flex-wrap:wrap"></div>
-    <div class="list" id="alertList"></div>
+    <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+      <div class="seg" id="alertSeg" style="display:inline-flex;flex-wrap:wrap;align-self:flex-start"></div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Actions required</h3>
+          <span class="sub"><span class="pill bad" id="actCount">0</span> <span class="pill">FACA · claims</span></span>
+        </div>
+        <div class="list" id="actList"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Derived alerts</h3>
+          <span class="sub"><span class="pill warn" id="derCount">0</span> <span class="pill">SPC · phases</span></span>
+        </div>
+        <div class="list" id="alertList"></div>
+      </div>
+    </div>
   </div>`;
 }
 
@@ -525,11 +541,22 @@ function mountOverview(){
   $q("#alertSeg").innerHTML = alertChip("all", counts.all) + ALERT_TYPES.map(t => alertChip(t, counts[t])).join("");
   $q$("#alertSeg button").forEach(b => b.onclick = () => { STATE.alertFilter = b.dataset.t; mountOverview(); });
   const shown = STATE.alertFilter === "all" ? alerts : alerts.filter(a => (a.type || "system") === STATE.alertFilter);
-  $q("#alertList").innerHTML = shown.length ? shown.map(a => `
+  const alertItem = a => `
     <div class="item">
       <div class="item-ico" style="background:var(--${a.sev}-soft);color:var(--${a.sev})">${a.sev==="bad"?"⚑":a.sev==="warn"?"⚠":"✓"}</div>
       <div class="item-body"><div class="item-title">${esc(a.txt)}</div><div class="item-sub">just now · ${a.type==="system"?"auto-detected":a.type}</div></div>
-    </div>`).join("") : `<div class="empty">No ${STATE.alertFilter === "all" ? "" : STATE.alertFilter + " "}alerts in scope — all clear</div>`;
+    </div>`;
+  const emptyMsg = t => `<div class="empty">No ${t} in scope — all clear</div>`;
+  /* actions (a human must act) are split from derived signals (data-driven) */
+  const actShown = shown.filter(a => ["claim","faca"].includes(a.type || "system"));
+  const derShown = shown.filter(a => !["claim","faca"].includes(a.type || "system"));
+  $q("#actCount").textContent = actShown.length;
+  $q("#derCount").textContent = derShown.length;
+  $q("#actList").innerHTML = actShown.length ? actShown.map(alertItem).join("") : emptyMsg("open actions");
+  $q("#alertList").innerHTML = derShown.length ? derShown.map(alertItem).join("") : emptyMsg("derived signals");
+
+  // customer health — yield rolled up by account, scoped to the current filters
+  $q("#custList").innerHTML = customerHealthHTML();
 
   // section 2 — the KPI deep dive lives inside the overview
   mountKpiDeepDive();
@@ -546,6 +573,38 @@ function sideRow(name, k){
 }
 
 /* ---------- PRODUCTS ---------- */
+function customerHealthHTML(){
+  /* FPY / OEE per customer, built from whatever products the filters leave in scope */
+  const byCust = new Map();
+  filteredProducts().forEach(p => {
+    if (!byCust.has(p.customer)) byCust.set(p.customer, []);
+    byCust.get(p.customer).push(p);
+  });
+  if (!byCust.size) return `<div class="empty">No products in scope</div>`;
+  const claims = DB.plantClaims(STATE.plant), facas = DB.plantFaca(STATE.plant);
+  return [...byCust.entries()].map(([cust, ps]) => {
+    const avg = key => ps.reduce((s,p)=>s+DB.PRODUCT_KPI[p.id][key],0)/ps.length;
+    const fpy = avg("fpy"), oee = avg("oee"), ship = avg("ship");
+    const nClaim = claims.filter(c => c.customer === cust).length;
+    const nFaca = facas.filter(f => ps.some(p => p.id === f.product)).length;
+    const risk = fpy >= 96.5 && oee >= 82 ? "good" : fpy >= 94 && oee >= 75 ? "warn" : "bad";
+    const barW = (v, lo, hi) => Math.min(100, Math.max(3, (v-lo)/(hi-lo)*100)).toFixed(0);
+    return `
+    <div class="cust">
+      <div class="cust-top">
+        <b>${esc(cust)}</b>
+        <span class="pill ${risk}">${risk === "good" ? "on track" : risk === "warn" ? "watch" : "at risk"}</span>
+      </div>
+      <div class="cust-bar"><span class="cust-k">FPY</span><div class="bar"><i class="${fpy>=96.5?"g":fpy>=94?"w":"b"}" style="width:${barW(fpy,84,100)}%"></i></div><span class="mono">${fpy.toFixed(1)}%</span></div>
+      <div class="cust-bar"><span class="cust-k">OEE</span><div class="bar"><i class="${oee>=82?"g":oee>=75?"w":"b"}" style="width:${barW(oee,50,100)}%"></i></div><span class="mono">${oee.toFixed(0)}%</span></div>
+      <div class="cust-sub">${ps.map(p=>p.id).join(" · ")} · ship ${ship.toFixed(0)}%
+        ${nClaim ? `<span class="pill bad">${nClaim} claim${nClaim>1?"s":""}</span>` : ""}
+        ${nFaca ? `<span class="pill warn">${nFaca} FACA</span>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
 function productTableHTML(){
   const prods = sortedProducts();
   const arrow = key => STATE.sortKey===key ? `<span class="arr">${STATE.sortDir===1?"▲":"▼"}</span>` : "";
