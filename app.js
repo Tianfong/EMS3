@@ -356,23 +356,32 @@ function kpiSnapshot(){
 const STAGE_IDX = { P1:3.4, P2:2.1, EVT:1.4, DVT:0.6, PVT:0 };
 
 /* ---------- range-shifted series for the filtered snapshot ---------- */
-function shiftedSeries(base, shiftPct, n){
-  const f = 1 + shiftPct/100;
-  return base.slice(-n).map(v => +(v*f).toFixed(2));
+/* Shape a KPI's history so the series ends on the value the current filters
+   actually produce. `mult` controls how hard the trend reacts to that value;
+   every KPI also gets the clamping its unit demands, in one place. */
+function kpiSeries(id, raw, n=14, mult=1){
+  const base = DB.KPI_SERIES[id];
+  if (!base) return [];
+  const f = 1 + (mult * (raw - base.at(-1))) / 100;
+  let out = base.slice(-n).map(v => +(v*f).toFixed(2));
+  /* count KPIs (open claims, open FACA) must not drift into decimals once the
+     percentage shift is applied */
+  if (id === "claim" || id === "faca") out = out.map(Math.round);
+  if (id === "ship") out = out.map(v => Math.min(100, v));   // achievement cannot exceed 100%
+  return out;
 }
 
 /* ============================================================
    VIEW RENDERERS
    ============================================================ */function renderKpiCards(mount, snap){
-  const S = DB.KPI_SERIES;
   const defs = [
-    { id:"fpy",  ico:"✅", name:"FPY",  full:"First Pass Yield", val:`${snap.fpy}%`,  raw:snap.fpy, kc:"var(--good)", series:shiftedSeries(S.fpy, (snap.fpy-96.2)*0.8), target:96.5, note:"blended, rotor→test" },
-    { id:"fy",   ico:"🏁", name:"FY",   full:"Final Yield",      val:`${snap.fy}%`,   raw:snap.fy,  kc:"var(--acc)",  series:shiftedSeries(S.fy, (snap.fy-98.2)*0.8),  target:98.5, note:"incl. rework recovery" },
-    { id:"uph",  ico:"⚡", name:"UPH",  full:"Units Per Hour",   val:snap.uph,     raw:snap.uph,  kc:"var(--pur)",  series:shiftedSeries(S.uph,(snap.uph-148)*2),    target:160,  note:"line-rated" },
-    { id:"oee",  ico:"🏭", name:"OEE",  full:"Overall Equipment Effectiveness", val:`${snap.oee}%`, raw:snap.oee, kc:"var(--warn)", series:shiftedSeries(S.oee,(snap.oee-78.5)*1.2), target:82, note:"A × P × Q" },
-    { id:"ship", ico:"📦", name:"SHIP", full:"Shipment Achievement", val:`${snap.ship}%`, raw:snap.ship, kc:"var(--acc)",  series:shiftedSeries(S.ship,(snap.ship-97.5)*0.9), target:100, note:"commit vs actual" },
-    { id:"claim",ico:"⚑",  name:"CLAIM",full:"Customer Claims",  val:snap.claim,    raw:snap.claim, kc:"var(--bad)",  series:S.claim.slice(-14).map(v=>v + (snap.claim - S.claim.at(-1))), target:0, note:"open, quarter" },
-    { id:"faca", ico:"✎",  name:"FACA", full:"FACA Actions",     val:snap.faca,     raw:snap.faca,  kc:"var(--bad)",  series:S.faca.slice(-14).map(v=>v + (snap.faca - S.faca.at(-1))),   target:0, note:"open actions" },
+    { id:"fpy",  ico:"✅", name:"FPY",  full:"First Pass Yield", val:`${snap.fpy}%`,  raw:snap.fpy, kc:"var(--good)", series:kpiSeries("fpy", snap.fpy, 14, .8),  target:96.5, note:"blended, rotor→test" },
+    { id:"fy",   ico:"🏁", name:"FY",   full:"Final Yield",      val:`${snap.fy}%`,   raw:snap.fy,  kc:"var(--acc)",  series:kpiSeries("fy", snap.fy, 14, .8),    target:98.5, note:"incl. rework recovery" },
+    { id:"uph",  ico:"⚡", name:"UPH",  full:"Units Per Hour",   val:snap.uph,     raw:snap.uph,  kc:"var(--pur)",  series:kpiSeries("uph", snap.uph, 14, 2),     target:160,  note:"line-rated" },
+    { id:"oee",  ico:"🏭", name:"OEE",  full:"Overall Equipment Effectiveness", val:`${snap.oee}%`, raw:snap.oee, kc:"var(--warn)", series:kpiSeries("oee", snap.oee, 14, 1.2), target:82, note:"A × P × Q" },
+    { id:"ship", ico:"📦", name:"SHIP", full:"Shipment Achievement", val:`${snap.ship}%`, raw:snap.ship, kc:"var(--acc)",  series:kpiSeries("ship", snap.ship, 14, .9), target:100, note:"commit vs actual" },
+    { id:"claim",ico:"⚑",  name:"CLAIM",full:"Customer Claims",  val:snap.claim,    raw:snap.claim, kc:"var(--bad)",  series:kpiSeries("claim", snap.claim),  target:0, note:"open, quarter" },
+    { id:"faca", ico:"✎",  name:"FACA", full:"FACA Actions",     val:snap.faca,     raw:snap.faca,  kc:"var(--bad)",  series:kpiSeries("faca", snap.faca),    target:0, note:"open actions" },
   ];
   /* delta-vs-target chip: signed gap for the yield/rate KPIs, open count for the action KPIs */
   const chip = d => {
@@ -985,9 +994,9 @@ function mountKpiDeepDive(){
   const key = map[focus];
   const valMap = { fpy:snap.fpy, fy:snap.fy, uph:snap.uph, oee:snap.oee, ship:snap.ship, claim:snap.claim, faca:snap.faca };
   const baseSeries = S[key];
-  const series = shiftedSeries(baseSeries, key==="uph" ? (valMap[key]-148)*2 : (valMap[key]-(baseSeries.at(-1)))*1.0, n);
-  const labels = labelsFor(baseSeries, n);
   const goodDown = focus==="claim" || focus==="faca";
+  const series = kpiSeries(key, valMap[key], n, key==="uph" ? 2 : 1);
+  const labels = labelsFor(baseSeries, n);
 
   const vsTarget = goodDown ? (valMap[key] <= (kdef.target||0) ? "good" : "bad")
                             : (valMap[key] >= kdef.target ? "good" : "bad");
@@ -1011,7 +1020,7 @@ function mountKpiDeepDive(){
       <div class="card">
         <div class="card-head"><h3>Breakdown</h3></div>
         <div class="modal-grid">
-          <div class="stat-box"><span>Current</span><b>${valMap[key]}${kdef.unit==="%"?"%":""}</b></div>
+          <div class="stat-box on"><span>Current</span><b>${valMap[key]}${kdef.unit==="%"?"%":""}</b><div class="stat-spark" data-spark="${key}"></div></div>
           <div class="stat-box"><span>Target</span><b>${kdef.target}${kdef.unit==="%"?"%":""}</b></div>
           <div class="stat-box"><span>Best (range)</span><b>${goodDown ? Math.min(...series) : Math.max(...series)}${kdef.unit==="%"?"%":""}</b></div>
           <div class="stat-box"><span>Worst (range)</span><b>${goodDown ? Math.max(...series) : Math.min(...series)}${kdef.unit==="%"?"%":""}</b></div>
@@ -1061,6 +1070,15 @@ function mountKpiDeepDive(){
       `<span><i style="background:${i.color};${i.dash?"opacity:.7":""}"></i>${i.label}</span>`).join("");
   }
 
+  /* every tab gets a mini trend beside its current value, so the direction
+     is readable without studying the main chart */
+  const sparkBox = $q("#kpiBody .stat-spark");
+  if (sparkBox){
+    const sLast = series.at(-1), sPrev = series.at(-5) ?? sLast;
+    const up = sLast >= sPrev;
+    CHARTS.spark(sparkBox, series, goodDown ? (up ? "var(--bad)" : "var(--good)") : (up ? "var(--good)" : "var(--bad)"));
+  }
+
   $q("#kpiByStage").innerHTML = DB.STAGES.map(st => {
     const p = DB.PIPELINE.find(x=>x.stage===st);
     const v = p.fpy;
@@ -1095,11 +1113,10 @@ function mountKpiDeepDive(){
 function renderKpiStrip(snap, n){
   const el = $q("#kpiStrip");
   if (!el) return;
-  const S = DB.KPI_SERIES;
   const goodDown = id => id === "claim" || id === "faca";
   el.innerHTML = DB.KPIS.map(k => {
     const raw = snap[k.id];
-    const series = shiftedSeries(S[k.id], k.id === "uph" ? (raw-148)*2 : (raw - S[k.id].at(-1))*1.0, n);
+    const series = kpiSeries(k.id, raw, n, k.id === "uph" ? 2 : 1);
     const on = k.id === (STATE.kpiFocus || "fpy");
     return `<div class="ks ${on?"on":""}" data-kpi="${k.id}" role="button" tabindex="0">
       <div class="ks-top"><b>${k.name}</b><span class="mono">${typeof raw === "number" ? raw : "—"}${k.unit==="%"?"%":""}</span></div>
@@ -1109,7 +1126,7 @@ function renderKpiStrip(snap, n){
   el.querySelectorAll("[data-ks-spark]").forEach(box => {
     const id = box.dataset.ksSpark;
     const raw = snap[id];
-    const series = shiftedSeries(S[id], id === "uph" ? (raw-148)*2 : (raw - S[id].at(-1))*1.0, n);
+    const series = kpiSeries(id, raw, n, id === "uph" ? 2 : 1);
     const last = series.at(-1), prev = series.at(-5) ?? last;
     const up = last >= prev;
     CHARTS.spark(box, series, goodDown(id) ? (up ? "var(--bad)" : "var(--good)") : (up ? "var(--good)" : "var(--bad)"));
