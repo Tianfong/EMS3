@@ -5,6 +5,7 @@
 
 const STATE = {
   view: "overview",
+  plant: "ALL",           /* "ALL" | "A" | "B" — partitions lots, fixtures & KPI baselines */
   product: "ALL",
   stage: "ALL",
   side: "ALL",
@@ -187,6 +188,7 @@ function initTheme(){
 /* ---------- filtering ---------- */
 function filteredProducts(){
   return DB.PRODUCTS.filter(p =>
+    (STATE.plant === "ALL" || DB.plantOf(p) === STATE.plant) &&
     (STATE.product === "ALL" || p.id === STATE.product) &&
     (STATE.stage === "ALL" || p.stage === STATE.stage) &&
     (STATE.side === "ALL" || p.side.includes(STATE.side)) &&
@@ -197,7 +199,8 @@ function filteredProducts(){
 function rebuildLotSelect(){
   const sel = $q("#lotSel");
   if (!sel) return;
-  const avail = STATE.stage === "ALL" ? DB.LOTS : DB.LOTS.filter(l => l.stage === STATE.stage);
+  const avail = DB.plantLots(STATE.plant)
+    .filter(l => STATE.stage === "ALL" || l.stage === STATE.stage);
   sel.innerHTML = `<option value="ALL">All lots</option>` +
     avail.map(l => `<option value="${l.id}" ${STATE.lot===l.id?"selected":""}>${l.id} · ${l.stage} · ${DB.fmtW(l.units)}u</option>`).join("");
   if (STATE.lot !== "ALL" && !avail.some(l => l.id === STATE.lot)) STATE.lot = "ALL";
@@ -215,24 +218,44 @@ function rebuildLotSelect(){
 }
 function buildProductSelect(){
   const sel = $q("#productSel");
+  const avail = DB.plantProducts(STATE.plant);
+  /* a product picked under the old plant may no longer be in scope */
+  if (STATE.product !== "ALL" && !avail.some(p => p.id === STATE.product)) STATE.product = "ALL";
   sel.innerHTML = `<option value="ALL">All products</option>` +
-    DB.PRODUCTS.map(p => `<option value="${p.id}" ${STATE.product===p.id?"selected":""}>${p.id} · ${esc(p.name)}</option>`).join("");
+    avail.map(p => `<option value="${p.id}" ${STATE.product===p.id?"selected":""}>${p.id} · ${esc(p.name)}</option>`).join("");
   sel.value = STATE.product;
   sel.onchange = () => {
     STATE.product = sel.value;
-    // keep line/stage/lot coherent with the chosen product
+    // keep plant/stage/lot/machine coherent with the chosen product
     if (STATE.product !== "ALL"){
       const p = DB.PRODUCTS.find(x => x.id === STATE.product);
       if (p){
+        STATE.plant = DB.plantOf(p);
         STATE.machine = p.machine;
         if (p.stage !== STATE.stage){ STATE.stage = p.stage; STATE.lot = "ALL"; }
       }
     }
-    syncSegs();
+    syncSegs(); applyPlant();
     setView(STATE.view);
     refreshBadges(); buildTicker();
-    toast(`Product → <b>${STATE.product==="ALL"?"All":STATE.product}</b>`);
+    toast(`Product → <b>${STATE.product==="ALL"?"All":STATE.product}</b> · ${plantLabel(STATE.plant)}`);
   };
+}
+/* ---------- plant selector (top-level partition) ---------- */
+const plantLabel = pl => pl === "ALL" ? "All plants" : `Plant ${pl}`;
+function applyPlant(){
+  /* keep every dependent control coherent with the active plant */
+  const ps = $q("#plantSel");
+  if (ps){
+    ps.innerHTML = `<option value="ALL">All plants</option>` +
+      DB.PLANTS.map(p => `<option value="${p}" ${STATE.plant===p?"selected":""}>${plantLabel(p)}</option>`).join("");
+    ps.value = STATE.plant;
+  }
+  if (STATE.machine !== "ALL" && !DB.plantMachines(STATE.plant).includes(STATE.machine)) STATE.machine = "ALL";
+  if (STATE.lot !== "ALL" && !DB.plantLots(STATE.plant).some(x => x.id === STATE.lot)) STATE.lot = "ALL";
+  buildSeg($q("#machineSeg"), DB.plantMachines(STATE.plant), "machine", "All");
+  buildProductSelect();
+  syncSegs();
 }
 function sliceByRange(series){
   const n = { "7D":7, "30D":14, "QTD":28, "YTD":42 }[STATE.range] ?? 14;
@@ -278,6 +301,11 @@ function kpiSnapshot(){
     uph = Math.round(uph + (DB.SIDE_KPI[STATE.side].uph - 146)*0.5);
     oee += (DB.SIDE_KPI[STATE.side].oee - 79.5)*0.6;
   }
+  // plant bias — each site runs its own baseline
+  if (STATE.plant !== "ALL" && DB.PLANT_BIAS[STATE.plant]){
+    const pb = DB.PLANT_BIAS[STATE.plant];
+    fpy += pb.fpy; fy += pb.fy; uph = Math.round(uph + pb.uph); oee += pb.oee;
+  }
   // lot bias — selected lot's own KPIs dominate the blend
   if (STATE.lot !== "ALL" && DB.LOT_KPI[STATE.lot]){
     const lk = DB.LOT_KPI[STATE.lot];
@@ -291,11 +319,11 @@ function kpiSnapshot(){
   oee  = Math.min(94, Math.max(60, oee));
   ship = Math.min(100, Math.max(80, ship));
 
-  const claims = DB.CLAIMS.filter(c =>
+  const claims = DB.plantClaims(STATE.plant).filter(c =>
     (STATE.product==="ALL" || c.product===STATE.product) &&
     (STATE.side==="ALL" || c.side===STATE.side)
   ).length;
-  const facas = DB.FACA.filter(f =>
+  const facas = DB.plantFaca(STATE.plant).filter(f =>
     (STATE.product==="ALL" || f.product===STATE.product)
   ).length;
 
@@ -869,8 +897,8 @@ function mountQuality(){
   /* ---- SPC scope: blended baseline or a single production lot ---- */
   const sel = $q("#spcLot");
   sel.innerHTML = `<option value="ALL">Product baseline — blended</option>` +
-    DB.LOTS.map(l => `<option value="${l.id}">${l.id} · ${l.stage} lot</option>`).join("");
-  sel.value = STATE.spcLot && DB.LOTS.some(l => l.id === STATE.spcLot) ? STATE.spcLot : "ALL";
+    DB.plantLots(STATE.plant).map(l => `<option value="${l.id}">${l.id} · ${l.stage} lot</option>`).join("");
+  sel.value = STATE.spcLot && DB.plantLots(STATE.plant).some(l => l.id === STATE.spcLot) ? STATE.spcLot : "ALL";
   sel.onchange = () => { STATE.spcLot = sel.value; mountQuality(); };
   const lotId = sel.value === "ALL" ? null : sel.value;
   const base = DB.spcSamples();                        // blended baseline for scope
@@ -986,9 +1014,10 @@ function ganttRows(){
   if (STATE.ganttMode === "product"){
     DB.PROJECTS
       .filter(p => STATE.product==="ALL" || p.product===STATE.product)
+      .filter(p => STATE.plant==="ALL" || DB.productPlant(p.product)===STATE.plant)
       .forEach(p => rows.push({ key:p.id, label:p.name, sub:p.owner, health:p.health, tasks:p.tasks, prj:p }));
   } else {
-    const scopedLots = DB.LOTS.filter(l =>
+    const scopedLots = DB.plantLots(STATE.plant).filter(l =>
       (STATE.lot==="ALL" || l.id===STATE.lot) &&
       (STATE.stage==="ALL" || l.stage===STATE.stage)
     );
@@ -1027,6 +1056,7 @@ function mountGantt(){
 
   const projects = DB.PROJECTS
     .filter(p => STATE.product==="ALL" || p.product===STATE.product)
+    .filter(p => STATE.plant==="ALL" || DB.productPlant(p.product)===STATE.plant)
     .filter(p => {
       if (STATE.ganttGroup==="all") return true;
       if (STATE.ganttGroup==="npi") return ["X4155","X4156","X4153"].includes(p.product);
@@ -1361,7 +1391,7 @@ function openTaskEditor(prj, task){
 /* ---------- FACA ---------- */
 function facaListHTML(){
   const cls = s => s==="Overdue"?"bad":s==="In Review"?"acc":s==="Closed"?"good":"warn";
-  return DB.FACA.filter(f=>STATE.product==="ALL"||f.product===STATE.product).map(f => `
+  return DB.plantFaca(STATE.plant).filter(f=>STATE.product==="ALL"||f.product===STATE.product).map(f => `
     <div class="item" data-faca="${f.id}">
       <div class="item-ico" style="background:var(--pur-soft);color:var(--pur)">${f.ico}</div>
       <div class="item-body">
@@ -1390,7 +1420,7 @@ function viewFaca(){
 }
 
 function mountFaca(){
-  const items = DB.FACA.filter(f=>STATE.product==="ALL"||f.product===STATE.product);
+  const items = DB.plantFaca(STATE.plant).filter(f=>STATE.product==="ALL"||f.product===STATE.product);
   const mix = [
     { label:"Open",       v:items.filter(f=>f.status==="Open").length,      color:"var(--warn)" },
     { label:"In Review",  v:items.filter(f=>f.status==="In Review").length, color:"var(--acc)" },
@@ -1441,7 +1471,7 @@ function openFacaEditor(id){
 
 /* ---------- CLAIMS ---------- */
 function claimsTableHTML(productFilter){
-  const rows = DB.CLAIMS
+  const rows = DB.plantClaims(STATE.plant)
     .filter(c => (productFilter ? c.product===productFilter : STATE.product==="ALL" || c.product===STATE.product))
     .filter(c => STATE.side==="ALL" || c.side===STATE.side)
     .map(c => {
@@ -1783,21 +1813,24 @@ function setView(v){
 }
 
 /* ---------- segment controls ---------- */
-function buildSeg(el, items, key, allLabel){
+function buildSeg(el, items, key, allLabel, after){
   el.innerHTML = `<button data-v="ALL" class="${STATE[key]==="ALL"?"on":""}">${allLabel}</button>` +
     items.map(i => `<button data-v="${i}" class="${STATE[key]===i?"on":""}">${i}</button>`).join("");
   el.querySelectorAll("button").forEach(b => b.onclick = () => {
     STATE[key] = b.dataset.v;
     el.querySelectorAll("button").forEach(x => x.classList.toggle("on", x===b));
+    if (after) after();
     setView(STATE.view);
-    toast(`${key === "stage" ? "Stage" : key === "side" ? "Side" : key === "machine" ? "Machine" : "Range"} → <b>${b.dataset.v==="ALL"?"All":b.dataset.v}</b>`);
+    toast(`${key === "stage" ? "Stage" : key === "side" ? "Side" : key === "machine" ? "Machine" : key === "plant" ? "Plant" : "Range"} → <b>${b.dataset.v==="ALL"?"All":b.dataset.v}</b>`);
   });
 }
 function syncSegs(){
-  [["#stageSeg","stage"],["#sideSeg","side"],["#machineSeg","machine"],["#rangeSeg","range"]].forEach(([sel,key]) => {
+  [["#stageSeg","stage"],["#sideSeg","side"],["#machineSeg","machine"],["#rangeSeg","range"],["#plantSeg","plant"]].forEach(([sel,key]) => {
+    if (!$q(sel)) return;
     $q(sel).querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v===STATE[key]));
   });
   const ps = $q("#productSel"); if (ps) ps.value = STATE.product;
+  const pl = $q("#plantSel"); if (pl) pl.value = STATE.plant;
   rebuildLotSelect();
 }
 
@@ -1905,12 +1938,16 @@ function openSettings(){
 /* ---------- boot ---------- */
 function boot(){
   initTheme();
-  buildProductSelect();
-  rebuildLotSelect();
   buildSeg($q("#stageSeg"), DB.STAGES, "stage", "All");
   buildSeg($q("#sideSeg"),  DB.SIDES,  "side",  "All");
-  buildSeg($q("#machineSeg"), DB.MACHINES, "machine", "All");
   buildSeg($q("#rangeSeg"), DB.RANGES, "range", "");
+  applyPlant();          /* builds machineSeg + product select in one pass */
+
+  /* plant is the outermost partition — changing it re-derives everything below */
+  buildSeg($q("#plantSeg"), DB.PLANTS, "plant", "All", () => {
+    applyPlant();
+    refreshBadges(); buildTicker();
+  });
 
   $q$(".nav-item").forEach(b => b.onclick = () => setView(b.dataset.view));
   $q("#menuBtn").onclick = openSidebarMobile;

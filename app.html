@@ -577,7 +577,7 @@ body.g-dragging .g-bar{transition:none}
 
     <div class="sidebar-foot">
       <div class="pulse-card">
-        <div class="pulse-row"><span>NPI lines live</span><strong>4 / 4</strong></div>
+        <div class="pulse-row"><span>Fixture cells live</span><strong>4 / 4</strong></div>
         <div class="pulse-row"><span>Open issues</span><strong class="warn">9</strong></div>
         <div class="mini-bars" id="footBars" aria-hidden="true"></div>
         <div class="pulse-time" id="lastSync">synced just now</div>
@@ -597,6 +597,10 @@ body.g-dragging .g-bar{transition:none}
       </div>
 
       <div class="topbar-tools">
+        <div class="filter-chip" title="Manufacturing plant (partitions lots, fixtures & baselines)">
+          <span class="fc-label">Plant</span>
+          <div class="seg" id="plantSeg" role="group" aria-label="Plant filter"></div>
+        </div>
         <div class="filter-chip" title="Product">
           <span class="fc-label">Product</span>
           <select id="productSel" class="topbar-select" aria-label="Product filter"></select>
@@ -660,6 +664,7 @@ const DB = (() => {
   const SIDES  = ["RHS", "LHS"];
   const RANGES = ["7D", "30D", "QTD", "YTD"];
   const MACHINES = ["MF-01", "MF-02", "MF-03", "MF-04"];   /* machine / fixture cells */
+  const PLANTS = ["A", "B"];                                /* sites — partition everything */
 
   const PROCESSES = [
     { id:"rotor",    name:"Rotor Assembly",        ico:"🌀", target:{ fpy:97.0, uph:150, oee:82 } },
@@ -669,14 +674,23 @@ const DB = (() => {
   ];
 
   const PRODUCTS = [
-    { id:"X4151", name:"FDB 92mm · Server",      customer:"CloudCore",  stage:"DVT", side:"RHS+LHS", mule:"M4",      ramp:"2026-Q4", machine:"MF-01", vol: { ytd: 41200, target: 45000 } },
-    { id:"X4152", name:"FDB 120mm · High-CFM",   customer:"NovaServe",  stage:"DVT", side:"RHS+LHS", mule:"M4",      ramp:"2026-Q4", machine:"MF-01", vol: { ytd: 38600, target: 40000 } },
-    { id:"X4153", name:"FDB 80mm · Slim",        customer:"EdgeWave",   stage:"EVT", side:"RHS",     mule:"M3",      ramp:"2027-Q1", machine:"MF-02", vol: { ytd: 12600, target: 15000 } },
-    { id:"X4154", name:"FDB 120mm · Dual",       customer:"NovaServe",  stage:"PVT", side:"RHS+LHS", mule:"M5",      ramp:"2026-Q3", machine:"MF-03", vol: { ytd: 52100, target: 50000 } },
-    { id:"X4155", name:"FDB 60mm · Blade",       customer:"PicoCloud",  stage:"P1",  side:"LHS",     mule:"M1",      ramp:"2027-Q2", machine:"MF-04", vol: { ytd: 2100,  target: 6000 } },
-    { id:"X4156", name:"FDB 97mm · Silent",      customer:"CloudCore",  stage:"P2",  side:"RHS",     mule:"M2",      ramp:"2027-Q1", machine:"MF-04", vol: { ytd: 5400,  target: 8000 } },
+    { id:"X4151", name:"FDB 92mm · Server",      customer:"CloudCore",  stage:"DVT", side:"RHS+LHS", mule:"M4",      ramp:"2026-Q4", machine:"MF-01", plant:"A", vol: { ytd: 41200, target: 45000 } },
+    { id:"X4152", name:"FDB 120mm · High-CFM",   customer:"NovaServe",  stage:"DVT", side:"RHS+LHS", mule:"M4",      ramp:"2026-Q4", machine:"MF-01", plant:"A", vol: { ytd: 38600, target: 40000 } },
+    { id:"X4153", name:"FDB 80mm · Slim",        customer:"EdgeWave",   stage:"EVT", side:"RHS",     mule:"M3",      ramp:"2027-Q1", machine:"MF-03", plant:"B", vol: { ytd: 12600, target: 15000 } },
+    { id:"X4154", name:"FDB 120mm · Dual",       customer:"NovaServe",  stage:"PVT", side:"RHS+LHS", mule:"M5",      ramp:"2026-Q3", machine:"MF-03", plant:"B", vol: { ytd: 52100, target: 50000 } },
+    { id:"X4155", name:"FDB 60mm · Blade",       customer:"PicoCloud",  stage:"P1",  side:"LHS",     mule:"M1",      ramp:"2027-Q2", machine:"MF-02", plant:"A", vol: { ytd: 2100,  target: 6000 } },
+    { id:"X4156", name:"FDB 97mm · Silent",      customer:"CloudCore",  stage:"P2",  side:"RHS",     mule:"M2",      ramp:"2027-Q1", machine:"MF-04", plant:"B", vol: { ytd: 5400,  target: 8000 } },
   ];
   PRODUCTS.forEach(p => delete p.vol.y_data);
+
+  /* plant → machine mapping (fixtures live on a site) + per-plant KPI bias
+     Plant B runs slightly hotter on yield but slower on throughput          */
+  const MACHINE_PLANT = { "MF-01": "A", "MF-02": "A", "MF-03": "B", "MF-04": "B" };
+  const PLANT_BIAS = {
+    A: { fpy: 0,    fy: 0,    uph: 0,  oee: 0   },   /* baseline site */
+    B: { fpy: +0.6, fy: +0.3, uph: -6, oee: +1.4 },
+  };
+  const plantOf = p => (p.plant || "A");
 
   /* deterministic PRNG so refreshes are stable between reloads-ish */
   let seed = 4151;
@@ -713,6 +727,12 @@ const DB = (() => {
     PRODUCTS.forEach(p => { if (!PRODUCT_LOTS[p.id] || !PRODUCT_LOTS[p.id].length) PRODUCT_LOTS[p.id] = [LOTS.find(l=>l.stage===p.stage).id]; });
   }
 
+  /* lots inherit the plant of the products that run them */
+  LOTS.forEach(l => {
+    const owner = PRODUCTS.find(p => (PRODUCT_LOTS[p.id] || []).includes(l.id));
+    l.plant = owner ? plantOf(owner) : "A";
+  });
+
   /* ---------- per-lot KPI snapshot ---------- */
   const LOT_KPI = {};
   {
@@ -720,11 +740,12 @@ const DB = (() => {
     LOTS.forEach((l, i) => {
       seed = lotSeeds[l.stage] + i * 1013;
       const sb = { P1:-3.4, P2:-2.1, EVT:-1.4, DVT:-0.6, PVT:0 }[l.stage];
+      const pb = PLANT_BIAS[l.plant];
       LOT_KPI[l.id] = {
-        fpy: +clamp(96.4 + sb + (rnd()-0.5)*2.6, 86, 99.7).toFixed(1),
-        fy:  +clamp(98.2 + sb*0.5 + (rnd()-0.5)*1.4, 92, 99.9).toFixed(1),
-        uph: Math.round(clamp(150 + sb*7 + (rnd()-0.5)*40, 95, 200)),
-        oee: +clamp(80 + sb + (rnd()-0.5)*9, 62, 93).toFixed(1),
+        fpy: +clamp(96.4 + sb + pb.fpy + (rnd()-0.5)*2.6, 86, 99.7).toFixed(1),
+        fy:  +clamp(98.2 + sb*0.5 + pb.fy + (rnd()-0.5)*1.4, 92, 99.9).toFixed(1),
+        uph: Math.round(clamp(150 + sb*7 + pb.uph + (rnd()-0.5)*40, 95, 200)),
+        oee: +clamp(80 + sb + pb.oee + (rnd()-0.5)*9, 62, 93).toFixed(1),
       };
     });
   }
@@ -1169,12 +1190,23 @@ const DB = (() => {
   }
   function allAlerts(){ return dynamicAlerts().concat(SYSTEM_ALERTS); }
 
+  /* ---------- plant scoping helpers (STATE.plant = "ALL" | "A" | "B") ----------
+     Claims/FACA/projects inherit their plant through the parent product.     */
+  function plantProducts(pl){ return pl === "ALL" ? PRODUCTS : PRODUCTS.filter(p => plantOf(p) === pl); }
+  function plantMachines(pl){ return pl === "ALL" ? MACHINES : MACHINES.filter(m => MACHINE_PLANT[m] === pl); }
+  function plantLots(pl){ return pl === "ALL" ? LOTS : LOTS.filter(l => l.plant === pl); }
+  function productPlant(id){ const p = PRODUCTS.find(x => x.id === id); return p ? plantOf(p) : null; }
+  function plantClaims(pl){ return pl === "ALL" ? CLAIMS : CLAIMS.filter(c => productPlant(c.product) === pl); }
+  function plantFaca(pl){ return pl === "ALL" ? FACA : FACA.filter(f => productPlant(f.product) === pl); }
+
   /* ---------- public API ---------- */
   return {
-    STAGES, SIDES, RANGES, MACHINES, LOTS, PRODUCT_LOTS, LOT_KPI, LOT_PHASES, LOT_TASKS,
+    STAGES, SIDES, RANGES, MACHINES, PLANTS, LOTS, PRODUCT_LOTS, LOT_KPI, LOT_PHASES, LOT_TASKS,
     PROCESSES, PRODUCTS, KPIS, KPI_SERIES,
     PRODUCT_KPI, PROCESS_KPI, SIDE_KPI, SHIPMENTS, CLAIMS, FACA,
     PROJECTS, PIPELINE, ALERTS, TODAY,
+    MACHINE_PLANT, PLANT_BIAS, plantOf,
+    plantProducts, plantMachines, plantLots, plantClaims, plantFaca, productPlant,
     updateClaim, addClaim, updateFaca, updateProjectTasks, updateLotTasks, resetOverrides, LS_KEY,
     allAlerts, DEFECTS, spcStats, spcSamples, westernElectric,
     fmtW: n => n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/,"") + "k" : String(n),
@@ -1391,6 +1423,7 @@ const CHARTS = (() => {
 
 const STATE = {
   view: "overview",
+  plant: "ALL",           /* "ALL" | "A" | "B" — partitions lots, fixtures & KPI baselines */
   product: "ALL",
   stage: "ALL",
   side: "ALL",
@@ -1573,6 +1606,7 @@ function initTheme(){
 /* ---------- filtering ---------- */
 function filteredProducts(){
   return DB.PRODUCTS.filter(p =>
+    (STATE.plant === "ALL" || DB.plantOf(p) === STATE.plant) &&
     (STATE.product === "ALL" || p.id === STATE.product) &&
     (STATE.stage === "ALL" || p.stage === STATE.stage) &&
     (STATE.side === "ALL" || p.side.includes(STATE.side)) &&
@@ -1583,7 +1617,8 @@ function filteredProducts(){
 function rebuildLotSelect(){
   const sel = $q("#lotSel");
   if (!sel) return;
-  const avail = STATE.stage === "ALL" ? DB.LOTS : DB.LOTS.filter(l => l.stage === STATE.stage);
+  const avail = DB.plantLots(STATE.plant)
+    .filter(l => STATE.stage === "ALL" || l.stage === STATE.stage);
   sel.innerHTML = `<option value="ALL">All lots</option>` +
     avail.map(l => `<option value="${l.id}" ${STATE.lot===l.id?"selected":""}>${l.id} · ${l.stage} · ${DB.fmtW(l.units)}u</option>`).join("");
   if (STATE.lot !== "ALL" && !avail.some(l => l.id === STATE.lot)) STATE.lot = "ALL";
@@ -1601,24 +1636,44 @@ function rebuildLotSelect(){
 }
 function buildProductSelect(){
   const sel = $q("#productSel");
+  const avail = DB.plantProducts(STATE.plant);
+  /* a product picked under the old plant may no longer be in scope */
+  if (STATE.product !== "ALL" && !avail.some(p => p.id === STATE.product)) STATE.product = "ALL";
   sel.innerHTML = `<option value="ALL">All products</option>` +
-    DB.PRODUCTS.map(p => `<option value="${p.id}" ${STATE.product===p.id?"selected":""}>${p.id} · ${esc(p.name)}</option>`).join("");
+    avail.map(p => `<option value="${p.id}" ${STATE.product===p.id?"selected":""}>${p.id} · ${esc(p.name)}</option>`).join("");
   sel.value = STATE.product;
   sel.onchange = () => {
     STATE.product = sel.value;
-    // keep line/stage/lot coherent with the chosen product
+    // keep plant/stage/lot/machine coherent with the chosen product
     if (STATE.product !== "ALL"){
       const p = DB.PRODUCTS.find(x => x.id === STATE.product);
       if (p){
+        STATE.plant = DB.plantOf(p);
         STATE.machine = p.machine;
         if (p.stage !== STATE.stage){ STATE.stage = p.stage; STATE.lot = "ALL"; }
       }
     }
-    syncSegs();
+    syncSegs(); applyPlant();
     setView(STATE.view);
     refreshBadges(); buildTicker();
-    toast(`Product → <b>${STATE.product==="ALL"?"All":STATE.product}</b>`);
+    toast(`Product → <b>${STATE.product==="ALL"?"All":STATE.product}</b> · ${plantLabel(STATE.plant)}`);
   };
+}
+/* ---------- plant selector (top-level partition) ---------- */
+const plantLabel = pl => pl === "ALL" ? "All plants" : `Plant ${pl}`;
+function applyPlant(){
+  /* keep every dependent control coherent with the active plant */
+  const ps = $q("#plantSel");
+  if (ps){
+    ps.innerHTML = `<option value="ALL">All plants</option>` +
+      DB.PLANTS.map(p => `<option value="${p}" ${STATE.plant===p?"selected":""}>${plantLabel(p)}</option>`).join("");
+    ps.value = STATE.plant;
+  }
+  if (STATE.machine !== "ALL" && !DB.plantMachines(STATE.plant).includes(STATE.machine)) STATE.machine = "ALL";
+  if (STATE.lot !== "ALL" && !DB.plantLots(STATE.plant).some(x => x.id === STATE.lot)) STATE.lot = "ALL";
+  buildSeg($q("#machineSeg"), DB.plantMachines(STATE.plant), "machine", "All");
+  buildProductSelect();
+  syncSegs();
 }
 function sliceByRange(series){
   const n = { "7D":7, "30D":14, "QTD":28, "YTD":42 }[STATE.range] ?? 14;
@@ -1664,6 +1719,11 @@ function kpiSnapshot(){
     uph = Math.round(uph + (DB.SIDE_KPI[STATE.side].uph - 146)*0.5);
     oee += (DB.SIDE_KPI[STATE.side].oee - 79.5)*0.6;
   }
+  // plant bias — each site runs its own baseline
+  if (STATE.plant !== "ALL" && DB.PLANT_BIAS[STATE.plant]){
+    const pb = DB.PLANT_BIAS[STATE.plant];
+    fpy += pb.fpy; fy += pb.fy; uph = Math.round(uph + pb.uph); oee += pb.oee;
+  }
   // lot bias — selected lot's own KPIs dominate the blend
   if (STATE.lot !== "ALL" && DB.LOT_KPI[STATE.lot]){
     const lk = DB.LOT_KPI[STATE.lot];
@@ -1677,11 +1737,11 @@ function kpiSnapshot(){
   oee  = Math.min(94, Math.max(60, oee));
   ship = Math.min(100, Math.max(80, ship));
 
-  const claims = DB.CLAIMS.filter(c =>
+  const claims = DB.plantClaims(STATE.plant).filter(c =>
     (STATE.product==="ALL" || c.product===STATE.product) &&
     (STATE.side==="ALL" || c.side===STATE.side)
   ).length;
-  const facas = DB.FACA.filter(f =>
+  const facas = DB.plantFaca(STATE.plant).filter(f =>
     (STATE.product==="ALL" || f.product===STATE.product)
   ).length;
 
@@ -2255,8 +2315,8 @@ function mountQuality(){
   /* ---- SPC scope: blended baseline or a single production lot ---- */
   const sel = $q("#spcLot");
   sel.innerHTML = `<option value="ALL">Product baseline — blended</option>` +
-    DB.LOTS.map(l => `<option value="${l.id}">${l.id} · ${l.stage} lot</option>`).join("");
-  sel.value = STATE.spcLot && DB.LOTS.some(l => l.id === STATE.spcLot) ? STATE.spcLot : "ALL";
+    DB.plantLots(STATE.plant).map(l => `<option value="${l.id}">${l.id} · ${l.stage} lot</option>`).join("");
+  sel.value = STATE.spcLot && DB.plantLots(STATE.plant).some(l => l.id === STATE.spcLot) ? STATE.spcLot : "ALL";
   sel.onchange = () => { STATE.spcLot = sel.value; mountQuality(); };
   const lotId = sel.value === "ALL" ? null : sel.value;
   const base = DB.spcSamples();                        // blended baseline for scope
@@ -2372,9 +2432,10 @@ function ganttRows(){
   if (STATE.ganttMode === "product"){
     DB.PROJECTS
       .filter(p => STATE.product==="ALL" || p.product===STATE.product)
+      .filter(p => STATE.plant==="ALL" || DB.productPlant(p.product)===STATE.plant)
       .forEach(p => rows.push({ key:p.id, label:p.name, sub:p.owner, health:p.health, tasks:p.tasks, prj:p }));
   } else {
-    const scopedLots = DB.LOTS.filter(l =>
+    const scopedLots = DB.plantLots(STATE.plant).filter(l =>
       (STATE.lot==="ALL" || l.id===STATE.lot) &&
       (STATE.stage==="ALL" || l.stage===STATE.stage)
     );
@@ -2413,6 +2474,7 @@ function mountGantt(){
 
   const projects = DB.PROJECTS
     .filter(p => STATE.product==="ALL" || p.product===STATE.product)
+    .filter(p => STATE.plant==="ALL" || DB.productPlant(p.product)===STATE.plant)
     .filter(p => {
       if (STATE.ganttGroup==="all") return true;
       if (STATE.ganttGroup==="npi") return ["X4155","X4156","X4153"].includes(p.product);
@@ -2747,7 +2809,7 @@ function openTaskEditor(prj, task){
 /* ---------- FACA ---------- */
 function facaListHTML(){
   const cls = s => s==="Overdue"?"bad":s==="In Review"?"acc":s==="Closed"?"good":"warn";
-  return DB.FACA.filter(f=>STATE.product==="ALL"||f.product===STATE.product).map(f => `
+  return DB.plantFaca(STATE.plant).filter(f=>STATE.product==="ALL"||f.product===STATE.product).map(f => `
     <div class="item" data-faca="${f.id}">
       <div class="item-ico" style="background:var(--pur-soft);color:var(--pur)">${f.ico}</div>
       <div class="item-body">
@@ -2776,7 +2838,7 @@ function viewFaca(){
 }
 
 function mountFaca(){
-  const items = DB.FACA.filter(f=>STATE.product==="ALL"||f.product===STATE.product);
+  const items = DB.plantFaca(STATE.plant).filter(f=>STATE.product==="ALL"||f.product===STATE.product);
   const mix = [
     { label:"Open",       v:items.filter(f=>f.status==="Open").length,      color:"var(--warn)" },
     { label:"In Review",  v:items.filter(f=>f.status==="In Review").length, color:"var(--acc)" },
@@ -2827,7 +2889,7 @@ function openFacaEditor(id){
 
 /* ---------- CLAIMS ---------- */
 function claimsTableHTML(productFilter){
-  const rows = DB.CLAIMS
+  const rows = DB.plantClaims(STATE.plant)
     .filter(c => (productFilter ? c.product===productFilter : STATE.product==="ALL" || c.product===STATE.product))
     .filter(c => STATE.side==="ALL" || c.side===STATE.side)
     .map(c => {
@@ -3169,21 +3231,24 @@ function setView(v){
 }
 
 /* ---------- segment controls ---------- */
-function buildSeg(el, items, key, allLabel){
+function buildSeg(el, items, key, allLabel, after){
   el.innerHTML = `<button data-v="ALL" class="${STATE[key]==="ALL"?"on":""}">${allLabel}</button>` +
     items.map(i => `<button data-v="${i}" class="${STATE[key]===i?"on":""}">${i}</button>`).join("");
   el.querySelectorAll("button").forEach(b => b.onclick = () => {
     STATE[key] = b.dataset.v;
     el.querySelectorAll("button").forEach(x => x.classList.toggle("on", x===b));
+    if (after) after();
     setView(STATE.view);
-    toast(`${key === "stage" ? "Stage" : key === "side" ? "Side" : key === "machine" ? "Machine" : "Range"} → <b>${b.dataset.v==="ALL"?"All":b.dataset.v}</b>`);
+    toast(`${key === "stage" ? "Stage" : key === "side" ? "Side" : key === "machine" ? "Machine" : key === "plant" ? "Plant" : "Range"} → <b>${b.dataset.v==="ALL"?"All":b.dataset.v}</b>`);
   });
 }
 function syncSegs(){
-  [["#stageSeg","stage"],["#sideSeg","side"],["#machineSeg","machine"],["#rangeSeg","range"]].forEach(([sel,key]) => {
+  [["#stageSeg","stage"],["#sideSeg","side"],["#machineSeg","machine"],["#rangeSeg","range"],["#plantSeg","plant"]].forEach(([sel,key]) => {
+    if (!$q(sel)) return;
     $q(sel).querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v===STATE[key]));
   });
   const ps = $q("#productSel"); if (ps) ps.value = STATE.product;
+  const pl = $q("#plantSel"); if (pl) pl.value = STATE.plant;
   rebuildLotSelect();
 }
 
@@ -3291,12 +3356,16 @@ function openSettings(){
 /* ---------- boot ---------- */
 function boot(){
   initTheme();
-  buildProductSelect();
-  rebuildLotSelect();
   buildSeg($q("#stageSeg"), DB.STAGES, "stage", "All");
   buildSeg($q("#sideSeg"),  DB.SIDES,  "side",  "All");
-  buildSeg($q("#machineSeg"), DB.MACHINES, "machine", "All");
   buildSeg($q("#rangeSeg"), DB.RANGES, "range", "");
+  applyPlant();          /* builds machineSeg + product select in one pass */
+
+  /* plant is the outermost partition — changing it re-derives everything below */
+  buildSeg($q("#plantSeg"), DB.PLANTS, "plant", "All", () => {
+    applyPlant();
+    refreshBadges(); buildTicker();
+  });
 
   $q$(".nav-item").forEach(b => b.onclick = () => setView(b.dataset.view));
   $q("#menuBtn").onclick = openSidebarMobile;

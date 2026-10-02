@@ -12,6 +12,7 @@ const DB = (() => {
   const SIDES  = ["RHS", "LHS"];
   const RANGES = ["7D", "30D", "QTD", "YTD"];
   const MACHINES = ["MF-01", "MF-02", "MF-03", "MF-04"];   /* machine / fixture cells */
+  const PLANTS = ["A", "B"];                                /* sites — partition everything */
 
   const PROCESSES = [
     { id:"rotor",    name:"Rotor Assembly",        ico:"🌀", target:{ fpy:97.0, uph:150, oee:82 } },
@@ -21,14 +22,23 @@ const DB = (() => {
   ];
 
   const PRODUCTS = [
-    { id:"X4151", name:"FDB 92mm · Server",      customer:"CloudCore",  stage:"DVT", side:"RHS+LHS", mule:"M4",      ramp:"2026-Q4", machine:"MF-01", vol: { ytd: 41200, target: 45000 } },
-    { id:"X4152", name:"FDB 120mm · High-CFM",   customer:"NovaServe",  stage:"DVT", side:"RHS+LHS", mule:"M4",      ramp:"2026-Q4", machine:"MF-01", vol: { ytd: 38600, target: 40000 } },
-    { id:"X4153", name:"FDB 80mm · Slim",        customer:"EdgeWave",   stage:"EVT", side:"RHS",     mule:"M3",      ramp:"2027-Q1", machine:"MF-02", vol: { ytd: 12600, target: 15000 } },
-    { id:"X4154", name:"FDB 120mm · Dual",       customer:"NovaServe",  stage:"PVT", side:"RHS+LHS", mule:"M5",      ramp:"2026-Q3", machine:"MF-03", vol: { ytd: 52100, target: 50000 } },
-    { id:"X4155", name:"FDB 60mm · Blade",       customer:"PicoCloud",  stage:"P1",  side:"LHS",     mule:"M1",      ramp:"2027-Q2", machine:"MF-04", vol: { ytd: 2100,  target: 6000 } },
-    { id:"X4156", name:"FDB 97mm · Silent",      customer:"CloudCore",  stage:"P2",  side:"RHS",     mule:"M2",      ramp:"2027-Q1", machine:"MF-04", vol: { ytd: 5400,  target: 8000 } },
+    { id:"X4151", name:"FDB 92mm · Server",      customer:"CloudCore",  stage:"DVT", side:"RHS+LHS", mule:"M4",      ramp:"2026-Q4", machine:"MF-01", plant:"A", vol: { ytd: 41200, target: 45000 } },
+    { id:"X4152", name:"FDB 120mm · High-CFM",   customer:"NovaServe",  stage:"DVT", side:"RHS+LHS", mule:"M4",      ramp:"2026-Q4", machine:"MF-01", plant:"A", vol: { ytd: 38600, target: 40000 } },
+    { id:"X4153", name:"FDB 80mm · Slim",        customer:"EdgeWave",   stage:"EVT", side:"RHS",     mule:"M3",      ramp:"2027-Q1", machine:"MF-03", plant:"B", vol: { ytd: 12600, target: 15000 } },
+    { id:"X4154", name:"FDB 120mm · Dual",       customer:"NovaServe",  stage:"PVT", side:"RHS+LHS", mule:"M5",      ramp:"2026-Q3", machine:"MF-03", plant:"B", vol: { ytd: 52100, target: 50000 } },
+    { id:"X4155", name:"FDB 60mm · Blade",       customer:"PicoCloud",  stage:"P1",  side:"LHS",     mule:"M1",      ramp:"2027-Q2", machine:"MF-02", plant:"A", vol: { ytd: 2100,  target: 6000 } },
+    { id:"X4156", name:"FDB 97mm · Silent",      customer:"CloudCore",  stage:"P2",  side:"RHS",     mule:"M2",      ramp:"2027-Q1", machine:"MF-04", plant:"B", vol: { ytd: 5400,  target: 8000 } },
   ];
   PRODUCTS.forEach(p => delete p.vol.y_data);
+
+  /* plant → machine mapping (fixtures live on a site) + per-plant KPI bias
+     Plant B runs slightly hotter on yield but slower on throughput          */
+  const MACHINE_PLANT = { "MF-01": "A", "MF-02": "A", "MF-03": "B", "MF-04": "B" };
+  const PLANT_BIAS = {
+    A: { fpy: 0,    fy: 0,    uph: 0,  oee: 0   },   /* baseline site */
+    B: { fpy: +0.6, fy: +0.3, uph: -6, oee: +1.4 },
+  };
+  const plantOf = p => (p.plant || "A");
 
   /* deterministic PRNG so refreshes are stable between reloads-ish */
   let seed = 4151;
@@ -65,6 +75,12 @@ const DB = (() => {
     PRODUCTS.forEach(p => { if (!PRODUCT_LOTS[p.id] || !PRODUCT_LOTS[p.id].length) PRODUCT_LOTS[p.id] = [LOTS.find(l=>l.stage===p.stage).id]; });
   }
 
+  /* lots inherit the plant of the products that run them */
+  LOTS.forEach(l => {
+    const owner = PRODUCTS.find(p => (PRODUCT_LOTS[p.id] || []).includes(l.id));
+    l.plant = owner ? plantOf(owner) : "A";
+  });
+
   /* ---------- per-lot KPI snapshot ---------- */
   const LOT_KPI = {};
   {
@@ -72,11 +88,12 @@ const DB = (() => {
     LOTS.forEach((l, i) => {
       seed = lotSeeds[l.stage] + i * 1013;
       const sb = { P1:-3.4, P2:-2.1, EVT:-1.4, DVT:-0.6, PVT:0 }[l.stage];
+      const pb = PLANT_BIAS[l.plant];
       LOT_KPI[l.id] = {
-        fpy: +clamp(96.4 + sb + (rnd()-0.5)*2.6, 86, 99.7).toFixed(1),
-        fy:  +clamp(98.2 + sb*0.5 + (rnd()-0.5)*1.4, 92, 99.9).toFixed(1),
-        uph: Math.round(clamp(150 + sb*7 + (rnd()-0.5)*40, 95, 200)),
-        oee: +clamp(80 + sb + (rnd()-0.5)*9, 62, 93).toFixed(1),
+        fpy: +clamp(96.4 + sb + pb.fpy + (rnd()-0.5)*2.6, 86, 99.7).toFixed(1),
+        fy:  +clamp(98.2 + sb*0.5 + pb.fy + (rnd()-0.5)*1.4, 92, 99.9).toFixed(1),
+        uph: Math.round(clamp(150 + sb*7 + pb.uph + (rnd()-0.5)*40, 95, 200)),
+        oee: +clamp(80 + sb + pb.oee + (rnd()-0.5)*9, 62, 93).toFixed(1),
       };
     });
   }
@@ -521,12 +538,23 @@ const DB = (() => {
   }
   function allAlerts(){ return dynamicAlerts().concat(SYSTEM_ALERTS); }
 
+  /* ---------- plant scoping helpers (STATE.plant = "ALL" | "A" | "B") ----------
+     Claims/FACA/projects inherit their plant through the parent product.     */
+  function plantProducts(pl){ return pl === "ALL" ? PRODUCTS : PRODUCTS.filter(p => plantOf(p) === pl); }
+  function plantMachines(pl){ return pl === "ALL" ? MACHINES : MACHINES.filter(m => MACHINE_PLANT[m] === pl); }
+  function plantLots(pl){ return pl === "ALL" ? LOTS : LOTS.filter(l => l.plant === pl); }
+  function productPlant(id){ const p = PRODUCTS.find(x => x.id === id); return p ? plantOf(p) : null; }
+  function plantClaims(pl){ return pl === "ALL" ? CLAIMS : CLAIMS.filter(c => productPlant(c.product) === pl); }
+  function plantFaca(pl){ return pl === "ALL" ? FACA : FACA.filter(f => productPlant(f.product) === pl); }
+
   /* ---------- public API ---------- */
   return {
-    STAGES, SIDES, RANGES, MACHINES, LOTS, PRODUCT_LOTS, LOT_KPI, LOT_PHASES, LOT_TASKS,
+    STAGES, SIDES, RANGES, MACHINES, PLANTS, LOTS, PRODUCT_LOTS, LOT_KPI, LOT_PHASES, LOT_TASKS,
     PROCESSES, PRODUCTS, KPIS, KPI_SERIES,
     PRODUCT_KPI, PROCESS_KPI, SIDE_KPI, SHIPMENTS, CLAIMS, FACA,
     PROJECTS, PIPELINE, ALERTS, TODAY,
+    MACHINE_PLANT, PLANT_BIAS, plantOf,
+    plantProducts, plantMachines, plantLots, plantClaims, plantFaca, productPlant,
     updateClaim, addClaim, updateFaca, updateProjectTasks, updateLotTasks, resetOverrides, LS_KEY,
     allAlerts, DEFECTS, spcStats, spcSamples, westernElectric,
     fmtW: n => n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/,"") + "k" : String(n),

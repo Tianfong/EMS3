@@ -54,7 +54,7 @@
 
     <div class="sidebar-foot">
       <div class="pulse-card">
-        <div class="pulse-row"><span>NPI lines live</span><strong>4 / 4</strong></div>
+        <div class="pulse-row"><span>Fixture cells live</span><strong>4 / 4</strong></div>
         <div class="pulse-row"><span>Open issues</span><strong class="warn">9</strong></div>
         <div class="mini-bars" id="footBars" aria-hidden="true"></div>
         <div class="pulse-time" id="lastSync">synced just now</div>
@@ -74,6 +74,10 @@
       </div>
 
       <div class="topbar-tools">
+        <div class="filter-chip" title="Manufacturing plant (partitions lots, fixtures & baselines)">
+          <span class="fc-label">Plant</span>
+          <div class="seg" id="plantSeg" role="group" aria-label="Plant filter"></div>
+        </div>
         <div class="filter-chip" title="Product">
           <span class="fc-label">Product</span>
           <select id="productSel" class="topbar-select" aria-label="Product filter"></select>
