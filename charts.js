@@ -25,6 +25,19 @@ const CHARTS = (() => {
     return out;
   }
 
+  /* trailing min/max envelope over a rolling window — the band that shows
+     how wide the process has been swinging, not just where it landed */
+  function envelope(data, win){
+    const lo = [], hi = [];
+    for (let i=0; i<data.length; i++){
+      if (i < win-1){ lo.push(data[0]); hi.push(data[0]); continue; }
+      let a = Infinity, b = -Infinity;
+      for (let j=i-win+1; j<=i; j++){ if (data[j] < a) a = data[j]; if (data[j] > b) b = data[j]; }
+      lo.push(+a.toFixed(2)); hi.push(+b.toFixed(2));
+    }
+    return { lo, hi };
+  }
+
   /* line/area chart with hover crosshair
      opts.extras — [{data, color, dash, label}] overlay lines
      opts.band   — {lo:[], hi:[], color} envelope drawn behind the series   */
@@ -34,7 +47,8 @@ const CHARTS = (() => {
     const band = opts.band && opts.band.lo && opts.band.lo.length ? opts.band : null;
     const W = 720, H = 240, padL = 40, padR = 14, padT = 16, padB = 26;
     const iw = W - padL - padR, ih = H - padT - padB;
-    const all = [...pts, ...extras.flatMap(e => e.data), ...(band ? [...band.lo, ...band.hi] : [])];
+    const all = [...pts, ...extras.flatMap(e => e.data), ...(band ? [...band.lo, ...band.hi] : [])]
+      .filter(v => typeof v === "number" && isFinite(v));
     const min = Math.min(...all), max = Math.max(...all);
     const range = (max - min) || 1;
     const lo = min - range*0.15, hi = max + range*0.15;
@@ -67,14 +81,26 @@ const CHARTS = (() => {
       xLabels += `<text x="${X(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="${txt3}" class="mono">${opts.labels[i] ?? i}</text>`;
     });
 
-    const line = (data, color, width, dash) => "M" + data.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L");
+    /* an overlay may start partway in (a moving average has nulls until its
+       window fills) — emit one sub-path per run of real values rather than
+       a single path with holes in it */
+    const line = (data) => {
+      const segs = [];
+      let cur = [];
+      data.forEach((v, i) => {
+        if (typeof v !== "number" || !isFinite(v)){ if (cur.length) segs.push(cur); cur = []; return; }
+        cur.push([X(i), Y(v)]);
+      });
+      if (cur.length) segs.push(cur);
+      return segs.map(s => "M" + s.map(p => p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L")).join(" ");
+    };
     const bandD = band ? [
       "M" + band.lo.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L"),
       "L" + band.hi.slice().reverse().map((v,i)=>X(band.hi.length-1-i).toFixed(1)+","+Y(v).toFixed(1)).join(" L"),
       "Z",
     ].join(" ") : "";
     const extrasD = extras.map(e =>
-      `<path d="${line(e.data, e.color, e.width || 1.6, e.dash)}" fill="none" stroke="${e.color}" stroke-width="${e.width||1.6}" ${e.dash?`stroke-dasharray="${e.dash}"`:""} opacity=".85" stroke-linejoin="round" stroke-linecap="round"><title>${esc(e.label||"")}</title></path>`).join("");
+      `<path d="${line(e.data)}" fill="none" stroke="${e.color}" stroke-width="${e.width||1.6}" ${e.dash?`stroke-dasharray="${e.dash}"`:""} opacity=".85" stroke-linejoin="round" stroke-linecap="round"><title>${esc(e.label||"")}</title></path>`).join("");
 
     el.innerHTML = `
       <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
@@ -234,5 +260,5 @@ const CHARTS = (() => {
     </svg>`;
   }
 
-  return { lineChart, spark, donut, controlChart, pareto, movingAvg, autoDec };
+  return { lineChart, spark, donut, controlChart, pareto, movingAvg, envelope, autoDec };
 })();

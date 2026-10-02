@@ -313,6 +313,24 @@ const DB = (() => {
     return { stage:st, units, fpy:+fpy.toFixed(1) };
   });
 
+  /* ---------- per-stage FPY trends ----------
+     The blended FPY series is the headline number. These per-stage trends
+     answer "which stage drags the blend down?" without inventing a second
+     source of truth: every stage is the blended series re-anchored to that
+     stage's pipeline yield, plus a small deterministic wobble.
+     Uses a local hash rather than rnd() so the shared PRNG stream — and
+     therefore every other generated dataset — is left untouched.       */
+  const wob = (a, b) => {
+    const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+    return (x - Math.floor(x)) - 0.5;
+  };
+  const blendedFpy = KPI_SERIES.fpy.reduce((s, v) => s + v, 0) / KPI_SERIES.fpy.length;
+  const STAGE_SERIES = {};
+  PIPELINE.forEach((p, i) => {
+    STAGE_SERIES[p.stage] = KPI_SERIES.fpy.map((v, j) =>
+      +clamp(v + (p.fpy - blendedFpy) + wob(i, j) * 0.9, 88, 99.6).toFixed(2));
+  });
+
   /* ---------- alerts feed ---------- */
   const ALERTS = [
     { sev:"bad",  txt:"X4152 RHS FPY dipped 2.1σ below DVT control limit at Fan Assembly" },
@@ -550,7 +568,7 @@ const DB = (() => {
   /* ---------- public API ---------- */
   return {
     STAGES, SIDES, RANGES, MACHINES, PLANTS, LOTS, PRODUCT_LOTS, LOT_KPI, LOT_PHASES, LOT_TASKS,
-    PROCESSES, PRODUCTS, KPIS, KPI_SERIES,
+    PROCESSES, PRODUCTS, KPIS, KPI_SERIES, STAGE_SERIES,
     PRODUCT_KPI, PROCESS_KPI, SIDE_KPI, SHIPMENTS, CLAIMS, FACA,
     PROJECTS, PIPELINE, ALERTS, TODAY,
     MACHINE_PLANT, PLANT_BIAS, plantOf,

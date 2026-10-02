@@ -35,6 +35,8 @@
   --warn:#fbbf24; --warn-soft:rgba(251,191,36,.14);
   --bad:#f87171; --bad-soft:rgba(248,113,113,.15);
   --pur:#a78bfa; --pur-soft:rgba(167,139,250,.14);
+  /* extra categorical hues for multi-series chart overlays only */
+  --teal:#2dd4bf; --pink:#f472b6;
   --shadow:0 10px 30px -12px rgba(2,6,23,.7);
   --r:16px; --r-sm:10px;
   --sidebar-w:242px;
@@ -50,6 +52,7 @@
   --warn:#b45309; --warn-soft:rgba(180,83,9,.10);
   --bad:#dc2626; --bad-soft:rgba(220,38,38,.10);
   --pur:#7c3aed; --pur-soft:rgba(124,58,237,.10);
+  --teal:#0d9488; --pink:#db2777;
   --shadow:0 10px 30px -14px rgba(15,23,42,.25);
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1023,6 +1026,24 @@ const DB = (() => {
     return { stage:st, units, fpy:+fpy.toFixed(1) };
   });
 
+  /* ---------- per-stage FPY trends ----------
+     The blended FPY series is the headline number. These per-stage trends
+     answer "which stage drags the blend down?" without inventing a second
+     source of truth: every stage is the blended series re-anchored to that
+     stage's pipeline yield, plus a small deterministic wobble.
+     Uses a local hash rather than rnd() so the shared PRNG stream — and
+     therefore every other generated dataset — is left untouched.       */
+  const wob = (a, b) => {
+    const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+    return (x - Math.floor(x)) - 0.5;
+  };
+  const blendedFpy = KPI_SERIES.fpy.reduce((s, v) => s + v, 0) / KPI_SERIES.fpy.length;
+  const STAGE_SERIES = {};
+  PIPELINE.forEach((p, i) => {
+    STAGE_SERIES[p.stage] = KPI_SERIES.fpy.map((v, j) =>
+      +clamp(v + (p.fpy - blendedFpy) + wob(i, j) * 0.9, 88, 99.6).toFixed(2));
+  });
+
   /* ---------- alerts feed ---------- */
   const ALERTS = [
     { sev:"bad",  txt:"X4152 RHS FPY dipped 2.1σ below DVT control limit at Fan Assembly" },
@@ -1260,7 +1281,7 @@ const DB = (() => {
   /* ---------- public API ---------- */
   return {
     STAGES, SIDES, RANGES, MACHINES, PLANTS, LOTS, PRODUCT_LOTS, LOT_KPI, LOT_PHASES, LOT_TASKS,
-    PROCESSES, PRODUCTS, KPIS, KPI_SERIES,
+    PROCESSES, PRODUCTS, KPIS, KPI_SERIES, STAGE_SERIES,
     PRODUCT_KPI, PROCESS_KPI, SIDE_KPI, SHIPMENTS, CLAIMS, FACA,
     PROJECTS, PIPELINE, ALERTS, TODAY,
     MACHINE_PLANT, PLANT_BIAS, plantOf,
@@ -1300,6 +1321,19 @@ const CHARTS = (() => {
     return out;
   }
 
+  /* trailing min/max envelope over a rolling window — the band that shows
+     how wide the process has been swinging, not just where it landed */
+  function envelope(data, win){
+    const lo = [], hi = [];
+    for (let i=0; i<data.length; i++){
+      if (i < win-1){ lo.push(data[0]); hi.push(data[0]); continue; }
+      let a = Infinity, b = -Infinity;
+      for (let j=i-win+1; j<=i; j++){ if (data[j] < a) a = data[j]; if (data[j] > b) b = data[j]; }
+      lo.push(+a.toFixed(2)); hi.push(+b.toFixed(2));
+    }
+    return { lo, hi };
+  }
+
   /* line/area chart with hover crosshair
      opts.extras — [{data, color, dash, label}] overlay lines
      opts.band   — {lo:[], hi:[], color} envelope drawn behind the series   */
@@ -1309,7 +1343,8 @@ const CHARTS = (() => {
     const band = opts.band && opts.band.lo && opts.band.lo.length ? opts.band : null;
     const W = 720, H = 240, padL = 40, padR = 14, padT = 16, padB = 26;
     const iw = W - padL - padR, ih = H - padT - padB;
-    const all = [...pts, ...extras.flatMap(e => e.data), ...(band ? [...band.lo, ...band.hi] : [])];
+    const all = [...pts, ...extras.flatMap(e => e.data), ...(band ? [...band.lo, ...band.hi] : [])]
+      .filter(v => typeof v === "number" && isFinite(v));
     const min = Math.min(...all), max = Math.max(...all);
     const range = (max - min) || 1;
     const lo = min - range*0.15, hi = max + range*0.15;
@@ -1342,14 +1377,26 @@ const CHARTS = (() => {
       xLabels += `<text x="${X(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="${txt3}" class="mono">${opts.labels[i] ?? i}</text>`;
     });
 
-    const line = (data, color, width, dash) => "M" + data.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L");
+    /* an overlay may start partway in (a moving average has nulls until its
+       window fills) — emit one sub-path per run of real values rather than
+       a single path with holes in it */
+    const line = (data) => {
+      const segs = [];
+      let cur = [];
+      data.forEach((v, i) => {
+        if (typeof v !== "number" || !isFinite(v)){ if (cur.length) segs.push(cur); cur = []; return; }
+        cur.push([X(i), Y(v)]);
+      });
+      if (cur.length) segs.push(cur);
+      return segs.map(s => "M" + s.map(p => p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L")).join(" ");
+    };
     const bandD = band ? [
       "M" + band.lo.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L"),
       "L" + band.hi.slice().reverse().map((v,i)=>X(band.hi.length-1-i).toFixed(1)+","+Y(v).toFixed(1)).join(" L"),
       "Z",
     ].join(" ") : "";
     const extrasD = extras.map(e =>
-      `<path d="${line(e.data, e.color, e.width || 1.6, e.dash)}" fill="none" stroke="${e.color}" stroke-width="${e.width||1.6}" ${e.dash?`stroke-dasharray="${e.dash}"`:""} opacity=".85" stroke-linejoin="round" stroke-linecap="round"><title>${esc(e.label||"")}</title></path>`).join("");
+      `<path d="${line(e.data)}" fill="none" stroke="${e.color}" stroke-width="${e.width||1.6}" ${e.dash?`stroke-dasharray="${e.dash}"`:""} opacity=".85" stroke-linejoin="round" stroke-linecap="round"><title>${esc(e.label||"")}</title></path>`).join("");
 
     el.innerHTML = `
       <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
@@ -1509,7 +1556,7 @@ const CHARTS = (() => {
     </svg>`;
   }
 
-  return { lineChart, spark, donut, controlChart, pareto, movingAvg, autoDec };
+  return { lineChart, spark, donut, controlChart, pareto, movingAvg, envelope, autoDec };
 })();
 
 </script>
@@ -1518,6 +1565,14 @@ const CHARTS = (() => {
 /* ============================================================
    FDB NPI Command Center — main app
    ============================================================ */
+
+/* stage colours — shared by the gantt bars and the per-stage FPY overlay */
+const STAGE_COLOR = { P1:"var(--warn)", P2:"var(--warn)", EVT:"var(--acc)", DVT:"var(--pur)", PVT:"var(--good)" };
+/* five *distinct* hues for the overlay. The gantt palette deliberately groups
+   P1/P2 as "early build", which is right for bars but makes two overlay lines
+   indistinguishable — and they must not collide with the blended line or the
+   moving average. */
+const STAGE_SERIES_COLOR = { P1:"var(--warn)", P2:"var(--teal)", EVT:"var(--pur)", DVT:"var(--pink)", PVT:"var(--good)" };
 
 const STATE = {
   view: "overview",
@@ -2505,9 +2560,16 @@ function mountKpiDeepDive(){
       <div class="card">
         <div class="card-head">
           <h3>${kdef.name} — ${esc(kdef.full)}</h3>
-          <span class="sub"><span class="pill ${vsTarget}">target ${kdef.target}${kdef.unit==="%"?"%":""} · now ${valMap[key]}${kdef.unit==="%"?"%":""}</span></span>
+          <span class="sub">
+            <span class="pill ${vsTarget}">target ${kdef.target}${kdef.unit==="%"?"%":""} · now ${valMap[key]}${kdef.unit==="%"?"%":""}</span>
+            ${focus==="fpy" ? `<span class="seg" id="fpyModeSeg">
+              <button data-m="blended" class="${STATE.fpyMode==="blended"?"on":""}">Blended</button>
+              <button data-m="stages" class="${STATE.fpyMode==="stages"?"on":""}">Per stage</button>
+            </span>` : ""}
+          </span>
         </div>
         <div id="kpiChart"></div>
+        ${focus==="fpy" ? `<div class="legend" style="margin-top:6px" id="fpyLegend"></div>` : ""}
       </div>
       <div class="card">
         <div class="card-head"><h3>Breakdown</h3></div>
@@ -2537,8 +2599,30 @@ function mountKpiDeepDive(){
   CHARTS.lineChart($q("#kpiChart"), {
     data: series, labels, target: kdef.target != null ? kdef.target : undefined,
     fmt: key==="uph" ? v=>Math.round(v) : (v=>v.toFixed(1)),
+    /* FPY carries the extra reading aids: a 5-day moving average that shows
+       where the process actually settles, and the rolling min/max envelope
+       that shows how wide it has been swinging. */
+    extras: focus==="fpy" ? [
+      { data: CHARTS.movingAvg(series, 5), color:"var(--txt2)", width:1.6, dash:"5 4", label:"5-day moving average" },
+      ...(STATE.fpyMode==="stages" ? DB.STAGES.map(st => ({
+        data: DB.STAGE_SERIES[st], color: STAGE_SERIES_COLOR[st], width:1.5,
+        label: `${st} FPY`,
+      })) : []),
+    ] : [],
+    band: focus==="fpy" ? { ...CHARTS.envelope(series, 5), color:"var(--txt3)" } : null,
     onHover: i => {},
   });
+
+  if (focus==="fpy"){
+    $q$("#fpyModeSeg button").forEach(b => {
+      b.onclick = () => { STATE.fpyMode = b.dataset.m; mountKpiDeepDive(); };
+    });
+    const items = [{ label:"5-day moving average", color:"var(--txt2)", dash:true }]
+      .concat(STATE.fpyMode==="stages" ? DB.STAGES.map(st => ({ label:`${st} stage FPY`, color:STAGE_SERIES_COLOR[st] })) : [])
+      .concat([{ label:"min/max envelope (5-day)", color:"var(--txt3)" }]);
+    $q("#fpyLegend").innerHTML = items.map(i =>
+      `<span><i style="background:${i.color};${i.dash?"opacity:.7":""}"></i>${i.label}</span>`).join("");
+  }
 
   $q("#kpiByStage").innerHTML = DB.STAGES.map(st => {
     const p = DB.PIPELINE.find(x=>x.stage===st);
@@ -2860,7 +2944,7 @@ function mountGantt(){
   ticks = ticks.filter(t => t.pct >= -PX_PER_DAY*8 && t.pct <= trackW + PX_PER_DAY*8);
 
   const todayX = (new Date(isoOf(DB.TODAY)+"T00:00:00").getTime() - d0.getTime())/DAY * PX_PER_DAY;
-  const stageColor = { P1:"var(--warn)", P2:"var(--warn)", EVT:"var(--acc)", DVT:"var(--pur)", PVT:"var(--good)" };
+  const stageColor = STAGE_COLOR;
 
   const gridHtml = (withLabels) => ticks.map(t => {
     const wknd = t.wknd ? " tick-wknd" : "";

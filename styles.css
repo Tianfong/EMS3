@@ -10,6 +10,8 @@
   --warn:#fbbf24; --warn-soft:rgba(251,191,36,.14);
   --bad:#f87171; --bad-soft:rgba(248,113,113,.15);
   --pur:#a78bfa; --pur-soft:rgba(167,139,250,.14);
+  /* extra categorical hues for multi-series chart overlays only */
+  --teal:#2dd4bf; --pink:#f472b6;
   --shadow:0 10px 30px -12px rgba(2,6,23,.7);
   --r:16px; --r-sm:10px;
   --sidebar-w:242px;
@@ -25,6 +27,7 @@
   --warn:#b45309; --warn-soft:rgba(180,83,9,.10);
   --bad:#dc2626; --bad-soft:rgba(220,38,38,.10);
   --pur:#7c3aed; --pur-soft:rgba(124,58,237,.10);
+  --teal:#0d9488; --pink:#db2777;
   --shadow:0 10px 30px -14px rgba(15,23,42,.25);
 }
 *{box-sizing:border-box;margin:0;padding:0}

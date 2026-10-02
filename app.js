@@ -3,6 +3,14 @@
    FDB NPI Command Center — main app
    ============================================================ */
 
+/* stage colours — shared by the gantt bars and the per-stage FPY overlay */
+const STAGE_COLOR = { P1:"var(--warn)", P2:"var(--warn)", EVT:"var(--acc)", DVT:"var(--pur)", PVT:"var(--good)" };
+/* five *distinct* hues for the overlay. The gantt palette deliberately groups
+   P1/P2 as "early build", which is right for bars but makes two overlay lines
+   indistinguishable — and they must not collide with the blended line or the
+   moving average. */
+const STAGE_SERIES_COLOR = { P1:"var(--warn)", P2:"var(--teal)", EVT:"var(--pur)", DVT:"var(--pink)", PVT:"var(--good)" };
+
 const STATE = {
   view: "overview",
   plant: "ALL",           /* "ALL" | "A" | "B" — partitions lots, fixtures & KPI baselines */
@@ -989,9 +997,16 @@ function mountKpiDeepDive(){
       <div class="card">
         <div class="card-head">
           <h3>${kdef.name} — ${esc(kdef.full)}</h3>
-          <span class="sub"><span class="pill ${vsTarget}">target ${kdef.target}${kdef.unit==="%"?"%":""} · now ${valMap[key]}${kdef.unit==="%"?"%":""}</span></span>
+          <span class="sub">
+            <span class="pill ${vsTarget}">target ${kdef.target}${kdef.unit==="%"?"%":""} · now ${valMap[key]}${kdef.unit==="%"?"%":""}</span>
+            ${focus==="fpy" ? `<span class="seg" id="fpyModeSeg">
+              <button data-m="blended" class="${STATE.fpyMode==="blended"?"on":""}">Blended</button>
+              <button data-m="stages" class="${STATE.fpyMode==="stages"?"on":""}">Per stage</button>
+            </span>` : ""}
+          </span>
         </div>
         <div id="kpiChart"></div>
+        ${focus==="fpy" ? `<div class="legend" style="margin-top:6px" id="fpyLegend"></div>` : ""}
       </div>
       <div class="card">
         <div class="card-head"><h3>Breakdown</h3></div>
@@ -1021,8 +1036,30 @@ function mountKpiDeepDive(){
   CHARTS.lineChart($q("#kpiChart"), {
     data: series, labels, target: kdef.target != null ? kdef.target : undefined,
     fmt: key==="uph" ? v=>Math.round(v) : (v=>v.toFixed(1)),
+    /* FPY carries the extra reading aids: a 5-day moving average that shows
+       where the process actually settles, and the rolling min/max envelope
+       that shows how wide it has been swinging. */
+    extras: focus==="fpy" ? [
+      { data: CHARTS.movingAvg(series, 5), color:"var(--txt2)", width:1.6, dash:"5 4", label:"5-day moving average" },
+      ...(STATE.fpyMode==="stages" ? DB.STAGES.map(st => ({
+        data: DB.STAGE_SERIES[st], color: STAGE_SERIES_COLOR[st], width:1.5,
+        label: `${st} FPY`,
+      })) : []),
+    ] : [],
+    band: focus==="fpy" ? { ...CHARTS.envelope(series, 5), color:"var(--txt3)" } : null,
     onHover: i => {},
   });
+
+  if (focus==="fpy"){
+    $q$("#fpyModeSeg button").forEach(b => {
+      b.onclick = () => { STATE.fpyMode = b.dataset.m; mountKpiDeepDive(); };
+    });
+    const items = [{ label:"5-day moving average", color:"var(--txt2)", dash:true }]
+      .concat(STATE.fpyMode==="stages" ? DB.STAGES.map(st => ({ label:`${st} stage FPY`, color:STAGE_SERIES_COLOR[st] })) : [])
+      .concat([{ label:"min/max envelope (5-day)", color:"var(--txt3)" }]);
+    $q("#fpyLegend").innerHTML = items.map(i =>
+      `<span><i style="background:${i.color};${i.dash?"opacity:.7":""}"></i>${i.label}</span>`).join("");
+  }
 
   $q("#kpiByStage").innerHTML = DB.STAGES.map(st => {
     const p = DB.PIPELINE.find(x=>x.stage===st);
@@ -1344,7 +1381,7 @@ function mountGantt(){
   ticks = ticks.filter(t => t.pct >= -PX_PER_DAY*8 && t.pct <= trackW + PX_PER_DAY*8);
 
   const todayX = (new Date(isoOf(DB.TODAY)+"T00:00:00").getTime() - d0.getTime())/DAY * PX_PER_DAY;
-  const stageColor = { P1:"var(--warn)", P2:"var(--warn)", EVT:"var(--acc)", DVT:"var(--pur)", PVT:"var(--good)" };
+  const stageColor = STAGE_COLOR;
 
   const gridHtml = (withLabels) => ticks.map(t => {
     const wknd = t.wknd ? " tick-wknd" : "";
