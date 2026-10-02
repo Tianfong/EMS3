@@ -1444,8 +1444,7 @@ function mountGantt(){
             const crit = byLot && ti > 0 && t.done < 100 && (r.tasks[ti-1].done >= 100);
             const cls = `g-bar ${byLot?"g-bar-lot":""}${t.done>=100?" g-done":""}${crit?" g-crit":""}${late?" g-risk":""}`;
             return `<div class="${cls}" data-row="${r.key}" data-phase-idx="${ti}" data-task="${esc(t.name)}"
-              style="left:${l.toFixed(1)}px;width:${w.toFixed(1)}px;--pb:${color}"
-              title="${esc(r.label)} · ${esc(t.name)} · ${t.s} → ${t.e} · ${t.done}% complete${late?" · ⚠ OVERDUE":""}${crit?" · next in critical chain":""}"><i class="g-fill" style="width:${t.done}%"></i>${showTxt && t.done>0 ? `<b class="g-txt${onFill?"":" g-txt-lo"}">${t.done}%</b>` : ""}<i class="g-grip" title="Drag to extend"></i></div>`;
+              style="left:${l.toFixed(1)}px;width:${w.toFixed(1)}px;--pb:${color}"title="${esc(r.label)} · ${esc(t.name)} · ${t.s} → ${t.e} · ${t.done}% complete${late? " · ⚠ OVERDUE":""}${crit? " · next in critical chain":""}"><i class="g-fill" style="width:${t.done}%"></i>${showTxt && t.done>0 ? `<b class="g-txt${onFill?"":" g-txt-lo"}">${t.done}%</b>` : ""}<i class="g-grip g-gstart" title="Drag to move the start date"></i><i class="g-grip" title="Drag to extend"></i></div>`;
           }).join("")}
           ${byLot ? ganttDepsSvg(r, x) : ""}
         </div>
@@ -1507,13 +1506,27 @@ function mountGantt(){
 /* ---------- gantt: dependency arrows (lot mode: consecutive phases in the 5-step flow) ---------- */
 function ganttDepsSvg(r, x){
   const segs = [];
+  const y1 = 15;
   for (let i = 0; i < r.tasks.length - 1; i++){
     const a = r.tasks[i], b = r.tasks[i+1];
     const ax = x(a.e) + 2, bx = x(b.s) - 3;
+    const title = `${a.name} ends ${a.e} → ${b.name} starts ${b.s}`;
+    /* a successor that starts before its predecessor has finished breaks the
+       5-step sequence. A same-day hand-off is normal, so only a strict
+       overlap counts. There is no forward gap to draw, so show the overlap
+       explicitly in alarm colour instead of silently hiding it. */
+    if (b.s < a.e){
+      const from = x(b.s) + 2;
+      const to = Math.max(x(a.e) - 3, from + 7);
+      segs.push(`<g class="g-dep-bad"><title>${esc(title)} — sequence broken, phases overlap</title>` +
+        `<line x1="${from.toFixed(1)}" y1="${y1}" x2="${(to-6).toFixed(1)}" y2="${y1}"/>` +
+        `<path d="M${to.toFixed(1)},${y1} l-6,-3.5 v7 z"/></g>`);
+      continue;
+    }
     if (bx - ax < 5) continue;                       /* phases touch — no room for an arrow */
-    const y1 = 15;
-    segs.push(`<line x1="${ax.toFixed(1)}" y1="${y1}" x2="${(bx-6).toFixed(1)}" y2="${y1}"/>` +
-      `<path d="M${bx.toFixed(1)},${y1} l-6,-3.5 v7 z"/>`);
+    segs.push(`<g><title>${esc(title)}</title>` +
+      `<line x1="${ax.toFixed(1)}" y1="${y1}" x2="${(bx-6).toFixed(1)}" y2="${y1}"/>` +
+      `<path d="M${bx.toFixed(1)},${y1} l-6,-3.5 v7 z"/></g>`);
   }
   return `<svg class="g-deps">${segs.join("")}</svg>`;
 }
@@ -1524,7 +1537,8 @@ function bindGanttDrag(byLot, pxd, d0, DAY){
   $q$("#ganttWrap .g-bar").forEach(bar => {
     bar.addEventListener("pointerdown", e => {
       if (e.button !== 0) return;
-      const kind = e.target.closest(".g-grip") ? "resize" : "move";
+      const kind = e.target.closest(".g-gstart") ? "start"
+               : e.target.closest(".g-grip") ? "resize" : "move";
       const rowKey = bar.dataset.row, idx = +bar.dataset.phaseIdx;
       const orig = (DB.LOT_TASKS[rowKey] || [])[idx];
       if (!orig) return;
@@ -1541,6 +1555,11 @@ function bindGanttDrag(byLot, pxd, d0, DAY){
         let ns = origS, ne = origE;
         if (kind === "move"){
           ns = isoAddDays(origS, d); ne = isoAddDays(origE, d);
+        } else if (kind === "start"){
+          /* start slides independently — the end date is the commitment, so it
+             stays put and the phase simply gets longer or shorter */
+          const start = isoAddDays(origS, d);
+          ns = start > origE ? origE : start;
         } else {
           const end = isoAddDays(origS, spanDays - 1 + Math.max(-(spanDays-1), d));
           ne = end < origS ? origS : end;
@@ -1559,6 +1578,10 @@ function bindGanttDrag(byLot, pxd, d0, DAY){
         const phases = (DB.LOT_TASKS[rowKey] || []).map(t => {
           if (t.name !== orig.name) return { ...t };
           if (kind === "move") return { ...t, s: isoAddDays(orig.s, d), e: isoAddDays(orig.e, d) };
+          if (kind === "start"){
+            const s2 = isoAddDays(orig.s, d);
+            return { ...t, s: s2 > orig.e ? orig.e : s2 };
+          }
           const minEnd = orig.s;
           const e2 = isoAddDays(orig.s, spanDays - 1 + Math.max(-(spanDays-1), d));
           return { ...t, e: e2 < minEnd ? minEnd : e2 };
@@ -1567,7 +1590,8 @@ function bindGanttDrag(byLot, pxd, d0, DAY){
         if (bad){ toast("End date must be on or after start date", "warn"); setView("gantt"); return; }
         DB.updateLotTasks(rowKey, phases);
         refreshBadges(); buildTicker();
-        toast(`<b>${rowKey}</b> · ${esc(orig.name)} ${kind === "move" ? "moved" : "extended"} → ${phases[idx].s} → ${phases[idx].e}`, "good");
+        const verb = kind === "move" ? "moved" : kind === "start" ? "start →" : "extended";
+        toast(`<b>${rowKey}</b> · ${esc(orig.name)} ${verb} ${phases[idx].s} → ${phases[idx].e}`, "good");
         setView("gantt");
       };
     });
