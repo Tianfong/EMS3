@@ -442,6 +442,32 @@ body.g-dragging .g-bar{transition:none}
 .sec-nav .sn-dot{width:4px;height:4px;border-radius:50%;background:var(--line2);flex:none}
 #kpiCards,#ovPipeline,#ovDeepDive,#ovProducts,#ovAlerts{scroll-margin-top:116px}
 
+/* KPI deep-dive panel — trend strip + sticky tabs */
+#kpiPanel{margin-top:2px}
+.kpi-strip{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px;
+}
+.ks{
+  padding:8px 10px 6px;border:1px solid var(--line);border-radius:11px;background:var(--panel);
+  cursor:pointer;transition:.15s;min-width:0;
+}
+.ks:hover{border-color:var(--acc);transform:translateY(-1px)}
+.ks.on{border-color:var(--acc);background:var(--acc-soft)}
+.ks:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.ks-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px;margin-bottom:4px}
+.ks-top b{font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ks.on .ks-top b{color:var(--acc)}
+.ks-top span{font-size:13px;font-weight:800;color:var(--txt);flex:none}
+.ks-spark{height:26px}
+.ks-spark svg{width:100%;height:100%;display:block}
+
+#kpiTabs{
+  position:sticky;top:59px;z-index:28;margin-bottom:12px;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+}
+#kpiBody{scroll-margin-top:124px}
+
 .sec-head{display:flex;align-items:center;gap:10px;margin:20px 0 12px}
 .sec-head h2{font-size:14px;font-weight:800;letter-spacing:.3px}
 .sec-head .rule{flex:1;height:1px;background:var(--line)}
@@ -531,6 +557,9 @@ body.g-dragging .g-bar{transition:none}
   .filter-chip:has(#plantSeg){display:flex}   /* plant is the outermost partition — keep it reachable */
 }
 @media (max-width:760px){
+  .kpi-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ks-top b{font-size:10px}
+  #kpiTabs{top:53px}
   .g-kpi{grid-template-columns:repeat(2,1fr)}
   .g-2,.g-3{grid-template-columns:1fr}
   .view-area{padding:14px 12px 6px}

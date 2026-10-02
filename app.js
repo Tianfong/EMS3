@@ -15,6 +15,7 @@ const STATE = {
   lot: "ALL",
   alertFilter: "all",
   spcLot: "ALL",
+  fpyMode: "blended",     /* FPY deep dive: "blended" | "stages" */
   range: "30D",
   sortKey: null,
   sortDir: 1,
@@ -410,6 +411,7 @@ function shiftedSeries(base, shiftPct, n){
       /* the deep dive now lives inside Overview — jump to it when it is on this page */
       const tabs = $q("#kpiTabs");
       if (tabs){
+        expandKpiPanel();
         mountKpiDeepDive();
         tabs.scrollIntoView({ behavior:"smooth", block:"start" });
         window.scrollBy(0, -84);
@@ -448,11 +450,18 @@ function viewOverview(){
     </div>
   </div>
 
-  <div class="sec-head" id="ovDeepDive"><h2>KPI Deep Dive</h2><div class="rule"></div><span class="pill">${DB.KPIS.map(k=>k.name).join(" · ")}</span></div>
-  <div class="seg" id="kpiTabs" style="margin:2px 0 14px;display:inline-flex">
-    ${DB.KPIS.map(k=>`<button data-kpi="${k.id}" class="${k.id===(STATE.kpiFocus||"fpy")?"on":""}">${k.name}</button>`).join("")}
+  <div class="sec-head" id="ovDeepDive">
+    <h2>KPI Deep Dive</h2><div class="rule"></div>
+    <span class="pill">${DB.KPIS.map(k=>k.name).join(" · ")}</span>
+    <button class="mini-btn" id="kpiToggle" aria-expanded="true">▾ Hide</button>
   </div>
-  <div id="kpiBody"></div>
+  <div id="kpiPanel">
+    <div class="kpi-strip" id="kpiStrip"></div>
+    <div class="seg" id="kpiTabs">
+      ${DB.KPIS.map(k=>`<button data-kpi="${k.id}" class="${k.id===(STATE.kpiFocus||"fpy")?"on":""}">${k.name}</button>`).join("")}
+    </div>
+    <div id="kpiBody"></div>
+  </div>
 
   <div class="sec-head" id="ovProducts"><h2>Products & processes</h2><div class="rule"></div><span class="pill">${DB.PROCESSES.length} processes · ${snap.nProducts} of ${DB.PRODUCTS.length} products</span></div>
   <div class="card" style="padding:6px 10px">
@@ -507,6 +516,7 @@ function mountOverview(){
   $q$("#kpiCards .card.kpi").forEach(card => {
     card.onclick = () => {
       STATE.kpiFocus = card.dataset.kpi;
+      expandKpiPanel();
       mountKpiDeepDive();
       $q("#kpiTabs").scrollIntoView({ behavior: "smooth", block: "start" });
       window.scrollBy(0, -84);   /* clear the sticky topbar */
@@ -597,6 +607,21 @@ function mountOverview(){
   $q("#custList").innerHTML = customerHealthHTML();
 
   // section 2 — the KPI deep dive lives inside the overview
+  const panel = $q("#kpiPanel");
+  const collapsed = kpiCollapsed();
+  if (panel) panel.hidden = collapsed;
+  const tg = $q("#kpiToggle");
+  if (tg){
+    tg.textContent = collapsed ? "▸ Show" : "▾ Hide";
+    tg.setAttribute("aria-expanded", String(!collapsed));
+    tg.onclick = () => {
+      const hide = !panel.hidden;
+      panel.hidden = hide;
+      setKpiCollapsed(hide);
+      tg.textContent = hide ? "▸ Show" : "▾ Hide";
+      tg.setAttribute("aria-expanded", String(!hide));
+    };
+  }
   mountKpiDeepDive();
 }
 
@@ -787,7 +812,24 @@ function mountProducts(){
   });
 }
 
-/* ---------- PROCESSES ---------- */
+/* deep dive panel collapse state — remembered per user, collapsed by default
+   so the command page stays scannable                                        */
+function kpiCollapsed(){
+  try { return localStorage.getItem("fdb-kpi-collapsed") !== "0"; } catch(e){ return true; }
+}
+function setKpiCollapsed(v){
+  try { localStorage.setItem("fdb-kpi-collapsed", v ? "1" : "0"); } catch(e){}
+}
+function expandKpiPanel(){
+  const p = $q("#kpiPanel");
+  if (p && p.hidden){
+    p.hidden = false;
+    setKpiCollapsed(false);
+    const t = $q("#kpiToggle");
+    if (t){ t.textContent = "▾ Hide"; t.setAttribute("aria-expanded", "true"); }
+  }
+}
+
 /* hovering a flow node reveals that process's FPY trend inside the node itself */
 function bindFlowHover(){
   $q$("#flowWrap .flow-node").forEach(node => {
@@ -930,6 +972,7 @@ function mountKpiDeepDive(){
   const snap = kpiSnapshot();
   const S = DB.KPI_SERIES;
   const n = { "7D":7, "30D":14, "QTD":28, "YTD":42 }[STATE.range] ?? 14;
+  renderKpiStrip(snap, n);
   const map = { fpy:"fpy", fy:"fy", uph:"uph", oee:"oee", ship:"ship", claim:"claim", faca:"faca" };
   const key = map[focus];
   const valMap = { fpy:snap.fpy, fy:snap.fy, uph:snap.uph, oee:snap.oee, ship:snap.ship, claim:snap.claim, faca:snap.faca };
@@ -1009,6 +1052,36 @@ function mountKpiDeepDive(){
       ${sideRow("LHS", DB.SIDE_KPI.LHS)}
       <div class="empty" style="padding-top:8px">Side filter applies globally from the top bar.</div>`;
   }
+}
+
+/* all seven KPIs at a glance above the tabs — click any tile to dive in */
+function renderKpiStrip(snap, n){
+  const el = $q("#kpiStrip");
+  if (!el) return;
+  const S = DB.KPI_SERIES;
+  const goodDown = id => id === "claim" || id === "faca";
+  el.innerHTML = DB.KPIS.map(k => {
+    const raw = snap[k.id];
+    const series = shiftedSeries(S[k.id], k.id === "uph" ? (raw-148)*2 : (raw - S[k.id].at(-1))*1.0, n);
+    const on = k.id === (STATE.kpiFocus || "fpy");
+    return `<div class="ks ${on?"on":""}" data-kpi="${k.id}" role="button" tabindex="0">
+      <div class="ks-top"><b>${k.name}</b><span class="mono">${typeof raw === "number" ? raw : "—"}${k.unit==="%"?"%":""}</span></div>
+      <div class="ks-spark" data-ks-spark="${k.id}"></div>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-ks-spark]").forEach(box => {
+    const id = box.dataset.ksSpark;
+    const raw = snap[id];
+    const series = shiftedSeries(S[id], id === "uph" ? (raw-148)*2 : (raw - S[id].at(-1))*1.0, n);
+    const last = series.at(-1), prev = series.at(-5) ?? last;
+    const up = last >= prev;
+    CHARTS.spark(box, series, goodDown(id) ? (up ? "var(--bad)" : "var(--good)") : (up ? "var(--good)" : "var(--bad)"));
+  });
+  el.querySelectorAll(".ks").forEach(tile => {
+    const go = () => { STATE.kpiFocus = tile.dataset.kpi; expandKpiPanel(); mountKpiDeepDive(); };
+    tile.onclick = go;
+    tile.onkeydown = e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); go(); } };
+  });
 }
 
 /* ---------- QUALITY · SPC & PARETO ---------- */
