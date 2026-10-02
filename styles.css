@@ -279,6 +279,8 @@ td.mono{font-family:var(--mono);font-size:12px}
 
 /* process flow */
 .flow{display:flex;align-items:center;gap:0;overflow-x:auto;padding:8px 2px}
+.fn-spark{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.flow-node:hover .fn-spark{display:block}
 .flow-node{
   flex:none;min-width:170px;background:var(--glass);border:1px solid var(--line);
   border-radius:14px;padding:12px;cursor:pointer;transition:.18s;position:relative;

@@ -10,13 +10,32 @@ const CHARTS = (() => {
     if (dec) return v.toFixed(1);
     return Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(1);
   }
+  /* tight ranges need a decimal or every tick collapses to the same string */
+  const autoDec = (lo, hi) => (hi - lo) < 5 && Math.abs(hi) < 1000;
 
-  /* line/area chart with hover crosshair */
+  /* simple trailing moving average (nulls until the window fills) */
+  function movingAvg(data, win){
+    const out = [];
+    for (let i=0; i<data.length; i++){
+      if (i < win-1){ out.push(null); continue; }
+      let s = 0;
+      for (let j=i-win+1; j<=i; j++) s += data[j];
+      out.push(+(s/win).toFixed(2));
+    }
+    return out;
+  }
+
+  /* line/area chart with hover crosshair
+     opts.extras — [{data, color, dash, label}] overlay lines
+     opts.band   — {lo:[], hi:[], color} envelope drawn behind the series   */
   function lineChart(el, opts){
     const pts = opts.data;
+    const extras = (opts.extras || []).filter(e => e && e.data && e.data.length);
+    const band = opts.band && opts.band.lo && opts.band.lo.length ? opts.band : null;
     const W = 720, H = 240, padL = 40, padR = 14, padT = 16, padB = 26;
     const iw = W - padL - padR, ih = H - padT - padB;
-    const min = Math.min(...pts), max = Math.max(...pts);
+    const all = [...pts, ...extras.flatMap(e => e.data), ...(band ? [...band.lo, ...band.hi] : [])];
+    const min = Math.min(...all), max = Math.max(...all);
     const range = (max - min) || 1;
     const lo = min - range*0.15, hi = max + range*0.15;
     const X = i => padL + i*iw/(pts.length-1);
@@ -37,7 +56,7 @@ const CHARTS = (() => {
     for (let g=0; g<=3; g++){
       const v = lo + (hi-lo)*g/3;
       const y = Y(v);
-      const dec = (hi - lo) < 5 && Math.abs(hi) < 1000;   /* tight range → 1 decimal, no dup labels */
+      const dec = autoDec(lo, hi);
       gridLines += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--line)" stroke-dasharray="3 5"/>`;
       yLabels  += `<text x="${padL-7}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9" fill="${txt3}" class="mono">${fmtY(v, opts.fmt, dec)}</text>`;
     }
@@ -48,6 +67,15 @@ const CHARTS = (() => {
       xLabels += `<text x="${X(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="${txt3}" class="mono">${opts.labels[i] ?? i}</text>`;
     });
 
+    const line = (data, color, width, dash) => "M" + data.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L");
+    const bandD = band ? [
+      "M" + band.lo.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L"),
+      "L" + band.hi.slice().reverse().map((v,i)=>X(band.hi.length-1-i).toFixed(1)+","+Y(v).toFixed(1)).join(" L"),
+      "Z",
+    ].join(" ") : "";
+    const extrasD = extras.map(e =>
+      `<path d="${line(e.data, e.color, e.width || 1.6, e.dash)}" fill="none" stroke="${e.color}" stroke-width="${e.width||1.6}" ${e.dash?`stroke-dasharray="${e.dash}"`:""} opacity=".85" stroke-linejoin="round" stroke-linecap="round"><title>${esc(e.label||"")}</title></path>`).join("");
+
     el.innerHTML = `
       <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
         <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
@@ -55,6 +83,8 @@ const CHARTS = (() => {
           <stop offset="1" stop-color="${acc}" stop-opacity="0"/>
         </linearGradient></defs>
         ${gridLines}${yLabels}${xLabels}
+        ${bandD ? `<path d="${bandD}" fill="${band.color || "var(--txt3)"}" opacity=".13"/>` : ""}
+        ${extrasD}
         <path d="${areaD}" fill="url(#${gid})"/>
         <path d="${d}" fill="none" stroke="${acc}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
         ${opts.target != null ? `<line x1="${padL}" x2="${W-padR}" y1="${Y(opts.target)}" y2="${Y(opts.target)}" stroke="var(--good)" stroke-dasharray="6 4" stroke-width="1.4" opacity=".8"/><text x="${W-padR}" y="${Y(opts.target)-5}" text-anchor="end" font-size="9" fill="var(--good)" class="mono">target ${opts.target}</text>` : ""}
@@ -126,18 +156,27 @@ const CHARTS = (() => {
     const weIdx = Object.keys(we).map(Number).filter(i => !ooc.includes(i));
 
     const d = "M" + pts.map((v,i) => X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L");
+    const dec = autoDec(lo, hi);
     const lim = (v, color, label) =>
       `<line x1="${padL}" x2="${W-padR}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="${color}" ${color==="var(--good)"?"stroke-dasharray=\"6 4\"":"stroke-dasharray=\"4 3\""} opacity=".85"/>
        <text x="${W-padR}" y="${(Y(v)-4).toFixed(1)}" text-anchor="end" font-size="9" fill="${color}" class="mono">${label}</text>`;
+    /* y ticks share the lineChart precision rule so CL/UCL/LCL never duplicate a label */
+    let yTicks = "";
+    for (let g=0; g<=4; g++){
+      const v = lo + (hi-lo)*g/4;
+      yTicks += `<line x1="${padL}" x2="${W-padR}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="var(--line)" stroke-dasharray="3 5" opacity="${dec ? ".75" : ".5"}"/>
+        <text x="${padL-7}" y="${(Y(v)+3).toFixed(1)}" text-anchor="end" font-size="9" fill="${txt3}" class="mono">${fmtY(v, opts.fmt, dec)}</text>`;
+    }
 
     let xLabels = "";
     const step = Math.max(1, Math.ceil(pts.length/8));
     pts.forEach((v,i) => { if (!(i % step)) xLabels += `<text x="${X(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="${txt3}" class="mono">${opts.labels[i] ?? i}</text>`; });
 
     el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
-      ${lim(ucl, bad, "UCL " + (+ucl).toFixed(2))}
-      ${lim(cl, "var(--good)", "CL " + (+cl).toFixed(2))}
-      ${lim(lcl, bad, "LCL " + (+lcl).toFixed(2))}
+      ${yTicks}
+      ${lim(ucl, bad, "UCL " + fmtY(ucl, opts.fmt, dec))}
+      ${lim(cl, "var(--good)", "CL " + fmtY(cl, opts.fmt, dec))}
+      ${lim(lcl, bad, "LCL " + fmtY(lcl, opts.fmt, dec))}
       ${xLabels}
       ${bl ? `<path d="${"M"+bl.data.map((v,i) => X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L")}" fill="none" stroke="${txt3}" stroke-width="1.5" stroke-dasharray="5 4" opacity=".7"/>
       <text x="${padL+4}" y="${padT+9}" font-size="8.5" fill="${txt3}">dashed = product baseline</text>` : ""}
@@ -175,6 +214,7 @@ const CHARTS = (() => {
     let cum = 0;
     const pts = items.map(it => { cum += it.v; return cum/total*100; });
     const maxV = Math.max(...items.map(i=>i.v)) * 1.1;
+    const dec = autoDec(0, maxV);   /* close-count bars need a decimal or labels collide */
     const X = i => padL + (i+0.5)*iw/items.length;
     const YL = v => padT + (1 - v/maxV)*ih;
     const YR = p => padT + (1 - p/100)*ih;
@@ -186,7 +226,7 @@ const CHARTS = (() => {
         const y = YL(it.v), h = padT+ih - y;
         const color = (it.color || (i===0 ? bad : acc));
         return `<rect x="${(X(i)-Math.min(26,iw/items.length*0.32)).toFixed(1)}" y="${y.toFixed(1)}" width="${(Math.min(52,iw/items.length*0.64)).toFixed(1)}" height="${Math.max(h,1).toFixed(1)}" rx="4" fill="${color}" opacity=".92"><title>${esc(it.label)}: ${it.v} (${(it.v/total*100).toFixed(1)}%)</title></rect>
-          <text x="${X(i).toFixed(1)}" y="${(y-5).toFixed(1)}" text-anchor="middle" font-size="9.5" fill="var(--txt2)" class="mono">${it.v}</text>`;
+          <text x="${X(i).toFixed(1)}" y="${(y-5).toFixed(1)}" text-anchor="middle" font-size="9.5" fill="var(--txt2)" class="mono">${fmtY(it.v, null, dec)}</text>`;
       }).join("")}
       <path d="${line}" fill="none" stroke="var(--pur)" stroke-width="2" stroke-linecap="round"/>
       ${pts.map((p,i) => `<circle cx="${X(i).toFixed(1)}" cy="${YR(p).toFixed(1)}" r="3" fill="var(--pur)"/>`).join("")}
@@ -194,5 +234,5 @@ const CHARTS = (() => {
     </svg>`;
   }
 
-  return { lineChart, spark, donut, controlChart, pareto };
+  return { lineChart, spark, donut, controlChart, pareto, movingAvg, autoDec };
 })();

@@ -354,23 +354,35 @@ function shiftedSeries(base, shiftPct, n){
 
 /* ============================================================
    VIEW RENDERERS
-   ============================================================ */
-function renderKpiCards(mount, snap){
+   ============================================================ */function renderKpiCards(mount, snap){
   const S = DB.KPI_SERIES;
   const defs = [
-    { id:"fpy",  ico:"✅", name:"FPY",  full:"First Pass Yield", val:`${snap.fpy}%`,  kc:"var(--good)", series:shiftedSeries(S.fpy, (snap.fpy-96.2)*0.8), target:96.5, note:"blended, rotor→test" },
-    { id:"fy",   ico:"🏁", name:"FY",   full:"Final Yield",      val:`${snap.fy}%`,   kc:"var(--acc)",  series:shiftedSeries(S.fy, (snap.fy-98.2)*0.8),  target:98.5, note:"incl. rework recovery" },
-    { id:"uph",  ico:"⚡", name:"UPH",  full:"Units Per Hour",   val:snap.uph,        kc:"var(--pur)",  series:shiftedSeries(S.uph,(snap.uph-148)*2),    target:160,  note:"line-rated" },
-    { id:"oee",  ico:"🏭", name:"OEE",  full:"Overall Equipment Effectiveness", val:`${snap.oee}%`, kc:"var(--warn)", series:shiftedSeries(S.oee,(snap.oee-78.5)*1.2), target:82, note:"A × P × Q" },
-    { id:"ship", ico:"📦", name:"SHIP", full:"Shipment Achievement", val:`${snap.ship}%`, kc:"var(--acc)", series:shiftedSeries(S.ship,(snap.ship-97.5)*0.9), target:100, note:"commit vs actual" },
-    { id:"claim",ico:"⚑",  name:"CLAIM",full:"Customer Claims",  val:snap.claim,      kc:"var(--bad)",  series:S.claim.slice(-14).map(v=>v + (snap.claim - S.claim.at(-1))), target:0, note:"open, quarter" },
-    { id:"faca", ico:"✎",  name:"FACA", full:"FACA Actions",     val:snap.faca,       kc:"var(--bad)",  series:S.faca.slice(-14).map(v=>v + (snap.faca - S.faca.at(-1))),   target:0, note:"open actions" },
+    { id:"fpy",  ico:"✅", name:"FPY",  full:"First Pass Yield", val:`${snap.fpy}%`,  raw:snap.fpy, kc:"var(--good)", series:shiftedSeries(S.fpy, (snap.fpy-96.2)*0.8), target:96.5, note:"blended, rotor→test" },
+    { id:"fy",   ico:"🏁", name:"FY",   full:"Final Yield",      val:`${snap.fy}%`,   raw:snap.fy,  kc:"var(--acc)",  series:shiftedSeries(S.fy, (snap.fy-98.2)*0.8),  target:98.5, note:"incl. rework recovery" },
+    { id:"uph",  ico:"⚡", name:"UPH",  full:"Units Per Hour",   val:snap.uph,     raw:snap.uph,  kc:"var(--pur)",  series:shiftedSeries(S.uph,(snap.uph-148)*2),    target:160,  note:"line-rated" },
+    { id:"oee",  ico:"🏭", name:"OEE",  full:"Overall Equipment Effectiveness", val:`${snap.oee}%`, raw:snap.oee, kc:"var(--warn)", series:shiftedSeries(S.oee,(snap.oee-78.5)*1.2), target:82, note:"A × P × Q" },
+    { id:"ship", ico:"📦", name:"SHIP", full:"Shipment Achievement", val:`${snap.ship}%`, raw:snap.ship, kc:"var(--acc)",  series:shiftedSeries(S.ship,(snap.ship-97.5)*0.9), target:100, note:"commit vs actual" },
+    { id:"claim",ico:"⚑",  name:"CLAIM",full:"Customer Claims",  val:snap.claim,    raw:snap.claim, kc:"var(--bad)",  series:S.claim.slice(-14).map(v=>v + (snap.claim - S.claim.at(-1))), target:0, note:"open, quarter" },
+    { id:"faca", ico:"✎",  name:"FACA", full:"FACA Actions",     val:snap.faca,     raw:snap.faca,  kc:"var(--bad)",  series:S.faca.slice(-14).map(v=>v + (snap.faca - S.faca.at(-1))),   target:0, note:"open actions" },
   ];
-  mount.innerHTML = defs.map(d => `
+  /* delta-vs-target chip: signed gap for the yield/rate KPIs, open count for the action KPIs */
+  const chip = d => {
+    if (d.id === "claim" || d.id === "faca")
+      return { cls: d.raw > 0 ? "warn" : "good", txt: d.raw > 0 ? `${d.raw} open` : "clear" };
+    const pct = d.id !== "uph";
+    const gap = d.raw - d.target;
+    return {
+      cls: gap >= 0 ? "good" : "bad",
+      txt: `${gap >= 0 ? "+" : "−"}${Math.abs(gap).toFixed(1)}${pct ? " pp" : ""} vs ${d.target}${pct ? "%" : ""}`,
+    };
+  };
+  mount.innerHTML = defs.map(d => {
+    const c = chip(d);
+    return `
     <div class="card kpi" data-kpi="${d.id}" title="${esc(d.full)}">
       <div class="kpi-top">
         <span class="kpi-ico" style="--kc:${d.kc}">${d.ico}</span>
-        <span class="pill ${d.id==="claim"||d.id==="faca" ? (d.val>0?"warn":"good") : "acc"}">${d.id==="claim"||d.id==="faca" ? (d.val>0?"open":"clear") : "vs " + d.target + (d.id==="uph"?"":"%")}</span>
+        <span class="pill ${c.cls}" title="delta vs target ${d.target}">${c.txt}</span>
       </div>
       <div class="kpi-name">${d.name}</div>
       <div class="kpi-val">${d.val}${typeof d.val==="number" ? "" : ""}</div>
@@ -379,7 +391,8 @@ function renderKpiCards(mount, snap){
         <div class="kpi-spark" data-spark="${d.id}"></div>
       </div>
       <div class="kpi-note">${d.note}</div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 
   mount.querySelectorAll("[data-spark]").forEach(el => {
     const id = el.dataset.spark;
@@ -392,7 +405,19 @@ function renderKpiCards(mount, snap){
   });
 
   mount.querySelectorAll(".kpi").forEach(card => {
-    card.onclick = () => { STATE.view = "kpi"; STATE.kpiFocus = card.dataset.kpi; setView("kpi"); };
+    card.onclick = () => {
+      STATE.kpiFocus = card.dataset.kpi;
+      /* the deep dive now lives inside Overview — jump to it when it is on this page */
+      const tabs = $q("#kpiTabs");
+      if (tabs){
+        mountKpiDeepDive();
+        tabs.scrollIntoView({ behavior:"smooth", block:"start" });
+        window.scrollBy(0, -84);
+      } else {
+        STATE.view = "overview";
+        setView("overview");
+      }
+    };
   });
 }
 
@@ -538,8 +563,10 @@ function mountOverview(){
         <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][STATE.stage==="ALL"?"DVT":STATE.stage].uph}</b><span>UPH</span></div>
         <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][STATE.stage==="ALL"?"DVT":STATE.stage].oee.toFixed(0)}%</b><span>OEE</span></div>
       </div>
+      <div class="fn-spark"></div>
     </div>`).join("");
   $q$("#flowWrap .flow-node").forEach(el => el.onclick = () => { STATE.proc = el.dataset.proc; setView("processes"); });
+  bindFlowHover();
 
   // alerts — derived live from claims/FACA/projects/SPC/phases, filterable by source
   const alerts = DB.allAlerts();
@@ -761,6 +788,24 @@ function mountProducts(){
 }
 
 /* ---------- PROCESSES ---------- */
+/* hovering a flow node reveals that process's FPY trend inside the node itself */
+function bindFlowHover(){
+  $q$("#flowWrap .flow-node").forEach(node => {
+    const id = node.dataset.proc;
+    const box = node.querySelector(".fn-spark");
+    if (!box) return;
+    let drawn = false;
+    node.addEventListener("mouseenter", () => {
+      if (drawn) return;
+      const pr = DB.PROCESSES.find(x => x.id === id);
+      const off = (id || "").length;
+      const series = DB.KPI_SERIES.fpy.slice(-14).map((v,i) => +(v - 1.2 + ((i*off)%5)*0.18).toFixed(2));
+      CHARTS.lineChart(box, { data: series, labels: labelsFor(series, series.length), fmt: v => v.toFixed(1) + "%", target: pr ? pr.target.fpy : undefined });
+      drawn = true;
+    });
+  });
+}
+
 function viewProcesses(){
   const stage = STATE.stage === "ALL" ? "DVT" : STATE.stage;
   return `
@@ -803,8 +848,10 @@ function mountProcesses(){
         <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][stage].uph}</b><span>UPH</span></div>
         <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][stage].oee.toFixed(0)}%</b><span>OEE</span></div>
       </div>
+      <div class="fn-spark"></div>
     </div>`).join("");
   $q$("#flowWrap .flow-node").forEach(el => el.onclick = () => { STATE.proc = el.dataset.proc; mountProcesses(); renderProcDetail(); });
+  bindFlowHover();
 
   // funnel
   let cum = 100;

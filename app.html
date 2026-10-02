@@ -304,6 +304,8 @@ td.mono{font-family:var(--mono);font-size:12px}
 
 /* process flow */
 .flow{display:flex;align-items:center;gap:0;overflow-x:auto;padding:8px 2px}
+.fn-spark{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.flow-node:hover .fn-spark{display:block}
 .flow-node{
   flex:none;min-width:170px;background:var(--glass);border:1px solid var(--line);
   border-radius:14px;padding:12px;cursor:pointer;transition:.18s;position:relative;
@@ -1254,13 +1256,32 @@ const CHARTS = (() => {
     if (dec) return v.toFixed(1);
     return Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(1);
   }
+  /* tight ranges need a decimal or every tick collapses to the same string */
+  const autoDec = (lo, hi) => (hi - lo) < 5 && Math.abs(hi) < 1000;
 
-  /* line/area chart with hover crosshair */
+  /* simple trailing moving average (nulls until the window fills) */
+  function movingAvg(data, win){
+    const out = [];
+    for (let i=0; i<data.length; i++){
+      if (i < win-1){ out.push(null); continue; }
+      let s = 0;
+      for (let j=i-win+1; j<=i; j++) s += data[j];
+      out.push(+(s/win).toFixed(2));
+    }
+    return out;
+  }
+
+  /* line/area chart with hover crosshair
+     opts.extras — [{data, color, dash, label}] overlay lines
+     opts.band   — {lo:[], hi:[], color} envelope drawn behind the series   */
   function lineChart(el, opts){
     const pts = opts.data;
+    const extras = (opts.extras || []).filter(e => e && e.data && e.data.length);
+    const band = opts.band && opts.band.lo && opts.band.lo.length ? opts.band : null;
     const W = 720, H = 240, padL = 40, padR = 14, padT = 16, padB = 26;
     const iw = W - padL - padR, ih = H - padT - padB;
-    const min = Math.min(...pts), max = Math.max(...pts);
+    const all = [...pts, ...extras.flatMap(e => e.data), ...(band ? [...band.lo, ...band.hi] : [])];
+    const min = Math.min(...all), max = Math.max(...all);
     const range = (max - min) || 1;
     const lo = min - range*0.15, hi = max + range*0.15;
     const X = i => padL + i*iw/(pts.length-1);
@@ -1281,7 +1302,7 @@ const CHARTS = (() => {
     for (let g=0; g<=3; g++){
       const v = lo + (hi-lo)*g/3;
       const y = Y(v);
-      const dec = (hi - lo) < 5 && Math.abs(hi) < 1000;   /* tight range → 1 decimal, no dup labels */
+      const dec = autoDec(lo, hi);
       gridLines += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--line)" stroke-dasharray="3 5"/>`;
       yLabels  += `<text x="${padL-7}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9" fill="${txt3}" class="mono">${fmtY(v, opts.fmt, dec)}</text>`;
     }
@@ -1292,6 +1313,15 @@ const CHARTS = (() => {
       xLabels += `<text x="${X(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="${txt3}" class="mono">${opts.labels[i] ?? i}</text>`;
     });
 
+    const line = (data, color, width, dash) => "M" + data.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L");
+    const bandD = band ? [
+      "M" + band.lo.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L"),
+      "L" + band.hi.slice().reverse().map((v,i)=>X(band.hi.length-1-i).toFixed(1)+","+Y(v).toFixed(1)).join(" L"),
+      "Z",
+    ].join(" ") : "";
+    const extrasD = extras.map(e =>
+      `<path d="${line(e.data, e.color, e.width || 1.6, e.dash)}" fill="none" stroke="${e.color}" stroke-width="${e.width||1.6}" ${e.dash?`stroke-dasharray="${e.dash}"`:""} opacity=".85" stroke-linejoin="round" stroke-linecap="round"><title>${esc(e.label||"")}</title></path>`).join("");
+
     el.innerHTML = `
       <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
         <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
@@ -1299,6 +1329,8 @@ const CHARTS = (() => {
           <stop offset="1" stop-color="${acc}" stop-opacity="0"/>
         </linearGradient></defs>
         ${gridLines}${yLabels}${xLabels}
+        ${bandD ? `<path d="${bandD}" fill="${band.color || "var(--txt3)"}" opacity=".13"/>` : ""}
+        ${extrasD}
         <path d="${areaD}" fill="url(#${gid})"/>
         <path d="${d}" fill="none" stroke="${acc}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
         ${opts.target != null ? `<line x1="${padL}" x2="${W-padR}" y1="${Y(opts.target)}" y2="${Y(opts.target)}" stroke="var(--good)" stroke-dasharray="6 4" stroke-width="1.4" opacity=".8"/><text x="${W-padR}" y="${Y(opts.target)-5}" text-anchor="end" font-size="9" fill="var(--good)" class="mono">target ${opts.target}</text>` : ""}
@@ -1370,18 +1402,27 @@ const CHARTS = (() => {
     const weIdx = Object.keys(we).map(Number).filter(i => !ooc.includes(i));
 
     const d = "M" + pts.map((v,i) => X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L");
+    const dec = autoDec(lo, hi);
     const lim = (v, color, label) =>
       `<line x1="${padL}" x2="${W-padR}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="${color}" ${color==="var(--good)"?"stroke-dasharray=\"6 4\"":"stroke-dasharray=\"4 3\""} opacity=".85"/>
        <text x="${W-padR}" y="${(Y(v)-4).toFixed(1)}" text-anchor="end" font-size="9" fill="${color}" class="mono">${label}</text>`;
+    /* y ticks share the lineChart precision rule so CL/UCL/LCL never duplicate a label */
+    let yTicks = "";
+    for (let g=0; g<=4; g++){
+      const v = lo + (hi-lo)*g/4;
+      yTicks += `<line x1="${padL}" x2="${W-padR}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="var(--line)" stroke-dasharray="3 5" opacity="${dec ? ".75" : ".5"}"/>
+        <text x="${padL-7}" y="${(Y(v)+3).toFixed(1)}" text-anchor="end" font-size="9" fill="${txt3}" class="mono">${fmtY(v, opts.fmt, dec)}</text>`;
+    }
 
     let xLabels = "";
     const step = Math.max(1, Math.ceil(pts.length/8));
     pts.forEach((v,i) => { if (!(i % step)) xLabels += `<text x="${X(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="${txt3}" class="mono">${opts.labels[i] ?? i}</text>`; });
 
     el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
-      ${lim(ucl, bad, "UCL " + (+ucl).toFixed(2))}
-      ${lim(cl, "var(--good)", "CL " + (+cl).toFixed(2))}
-      ${lim(lcl, bad, "LCL " + (+lcl).toFixed(2))}
+      ${yTicks}
+      ${lim(ucl, bad, "UCL " + fmtY(ucl, opts.fmt, dec))}
+      ${lim(cl, "var(--good)", "CL " + fmtY(cl, opts.fmt, dec))}
+      ${lim(lcl, bad, "LCL " + fmtY(lcl, opts.fmt, dec))}
       ${xLabels}
       ${bl ? `<path d="${"M"+bl.data.map((v,i) => X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" L")}" fill="none" stroke="${txt3}" stroke-width="1.5" stroke-dasharray="5 4" opacity=".7"/>
       <text x="${padL+4}" y="${padT+9}" font-size="8.5" fill="${txt3}">dashed = product baseline</text>` : ""}
@@ -1419,6 +1460,7 @@ const CHARTS = (() => {
     let cum = 0;
     const pts = items.map(it => { cum += it.v; return cum/total*100; });
     const maxV = Math.max(...items.map(i=>i.v)) * 1.1;
+    const dec = autoDec(0, maxV);   /* close-count bars need a decimal or labels collide */
     const X = i => padL + (i+0.5)*iw/items.length;
     const YL = v => padT + (1 - v/maxV)*ih;
     const YR = p => padT + (1 - p/100)*ih;
@@ -1430,7 +1472,7 @@ const CHARTS = (() => {
         const y = YL(it.v), h = padT+ih - y;
         const color = (it.color || (i===0 ? bad : acc));
         return `<rect x="${(X(i)-Math.min(26,iw/items.length*0.32)).toFixed(1)}" y="${y.toFixed(1)}" width="${(Math.min(52,iw/items.length*0.64)).toFixed(1)}" height="${Math.max(h,1).toFixed(1)}" rx="4" fill="${color}" opacity=".92"><title>${esc(it.label)}: ${it.v} (${(it.v/total*100).toFixed(1)}%)</title></rect>
-          <text x="${X(i).toFixed(1)}" y="${(y-5).toFixed(1)}" text-anchor="middle" font-size="9.5" fill="var(--txt2)" class="mono">${it.v}</text>`;
+          <text x="${X(i).toFixed(1)}" y="${(y-5).toFixed(1)}" text-anchor="middle" font-size="9.5" fill="var(--txt2)" class="mono">${fmtY(it.v, null, dec)}</text>`;
       }).join("")}
       <path d="${line}" fill="none" stroke="var(--pur)" stroke-width="2" stroke-linecap="round"/>
       ${pts.map((p,i) => `<circle cx="${X(i).toFixed(1)}" cy="${YR(p).toFixed(1)}" r="3" fill="var(--pur)"/>`).join("")}
@@ -1438,7 +1480,7 @@ const CHARTS = (() => {
     </svg>`;
   }
 
-  return { lineChart, spark, donut, controlChart, pareto };
+  return { lineChart, spark, donut, controlChart, pareto, movingAvg, autoDec };
 })();
 
 </script>
@@ -1799,23 +1841,35 @@ function shiftedSeries(base, shiftPct, n){
 
 /* ============================================================
    VIEW RENDERERS
-   ============================================================ */
-function renderKpiCards(mount, snap){
+   ============================================================ */function renderKpiCards(mount, snap){
   const S = DB.KPI_SERIES;
   const defs = [
-    { id:"fpy",  ico:"✅", name:"FPY",  full:"First Pass Yield", val:`${snap.fpy}%`,  kc:"var(--good)", series:shiftedSeries(S.fpy, (snap.fpy-96.2)*0.8), target:96.5, note:"blended, rotor→test" },
-    { id:"fy",   ico:"🏁", name:"FY",   full:"Final Yield",      val:`${snap.fy}%`,   kc:"var(--acc)",  series:shiftedSeries(S.fy, (snap.fy-98.2)*0.8),  target:98.5, note:"incl. rework recovery" },
-    { id:"uph",  ico:"⚡", name:"UPH",  full:"Units Per Hour",   val:snap.uph,        kc:"var(--pur)",  series:shiftedSeries(S.uph,(snap.uph-148)*2),    target:160,  note:"line-rated" },
-    { id:"oee",  ico:"🏭", name:"OEE",  full:"Overall Equipment Effectiveness", val:`${snap.oee}%`, kc:"var(--warn)", series:shiftedSeries(S.oee,(snap.oee-78.5)*1.2), target:82, note:"A × P × Q" },
-    { id:"ship", ico:"📦", name:"SHIP", full:"Shipment Achievement", val:`${snap.ship}%`, kc:"var(--acc)", series:shiftedSeries(S.ship,(snap.ship-97.5)*0.9), target:100, note:"commit vs actual" },
-    { id:"claim",ico:"⚑",  name:"CLAIM",full:"Customer Claims",  val:snap.claim,      kc:"var(--bad)",  series:S.claim.slice(-14).map(v=>v + (snap.claim - S.claim.at(-1))), target:0, note:"open, quarter" },
-    { id:"faca", ico:"✎",  name:"FACA", full:"FACA Actions",     val:snap.faca,       kc:"var(--bad)",  series:S.faca.slice(-14).map(v=>v + (snap.faca - S.faca.at(-1))),   target:0, note:"open actions" },
+    { id:"fpy",  ico:"✅", name:"FPY",  full:"First Pass Yield", val:`${snap.fpy}%`,  raw:snap.fpy, kc:"var(--good)", series:shiftedSeries(S.fpy, (snap.fpy-96.2)*0.8), target:96.5, note:"blended, rotor→test" },
+    { id:"fy",   ico:"🏁", name:"FY",   full:"Final Yield",      val:`${snap.fy}%`,   raw:snap.fy,  kc:"var(--acc)",  series:shiftedSeries(S.fy, (snap.fy-98.2)*0.8),  target:98.5, note:"incl. rework recovery" },
+    { id:"uph",  ico:"⚡", name:"UPH",  full:"Units Per Hour",   val:snap.uph,     raw:snap.uph,  kc:"var(--pur)",  series:shiftedSeries(S.uph,(snap.uph-148)*2),    target:160,  note:"line-rated" },
+    { id:"oee",  ico:"🏭", name:"OEE",  full:"Overall Equipment Effectiveness", val:`${snap.oee}%`, raw:snap.oee, kc:"var(--warn)", series:shiftedSeries(S.oee,(snap.oee-78.5)*1.2), target:82, note:"A × P × Q" },
+    { id:"ship", ico:"📦", name:"SHIP", full:"Shipment Achievement", val:`${snap.ship}%`, raw:snap.ship, kc:"var(--acc)",  series:shiftedSeries(S.ship,(snap.ship-97.5)*0.9), target:100, note:"commit vs actual" },
+    { id:"claim",ico:"⚑",  name:"CLAIM",full:"Customer Claims",  val:snap.claim,    raw:snap.claim, kc:"var(--bad)",  series:S.claim.slice(-14).map(v=>v + (snap.claim - S.claim.at(-1))), target:0, note:"open, quarter" },
+    { id:"faca", ico:"✎",  name:"FACA", full:"FACA Actions",     val:snap.faca,     raw:snap.faca,  kc:"var(--bad)",  series:S.faca.slice(-14).map(v=>v + (snap.faca - S.faca.at(-1))),   target:0, note:"open actions" },
   ];
-  mount.innerHTML = defs.map(d => `
+  /* delta-vs-target chip: signed gap for the yield/rate KPIs, open count for the action KPIs */
+  const chip = d => {
+    if (d.id === "claim" || d.id === "faca")
+      return { cls: d.raw > 0 ? "warn" : "good", txt: d.raw > 0 ? `${d.raw} open` : "clear" };
+    const pct = d.id !== "uph";
+    const gap = d.raw - d.target;
+    return {
+      cls: gap >= 0 ? "good" : "bad",
+      txt: `${gap >= 0 ? "+" : "−"}${Math.abs(gap).toFixed(1)}${pct ? " pp" : ""} vs ${d.target}${pct ? "%" : ""}`,
+    };
+  };
+  mount.innerHTML = defs.map(d => {
+    const c = chip(d);
+    return `
     <div class="card kpi" data-kpi="${d.id}" title="${esc(d.full)}">
       <div class="kpi-top">
         <span class="kpi-ico" style="--kc:${d.kc}">${d.ico}</span>
-        <span class="pill ${d.id==="claim"||d.id==="faca" ? (d.val>0?"warn":"good") : "acc"}">${d.id==="claim"||d.id==="faca" ? (d.val>0?"open":"clear") : "vs " + d.target + (d.id==="uph"?"":"%")}</span>
+        <span class="pill ${c.cls}" title="delta vs target ${d.target}">${c.txt}</span>
       </div>
       <div class="kpi-name">${d.name}</div>
       <div class="kpi-val">${d.val}${typeof d.val==="number" ? "" : ""}</div>
@@ -1824,7 +1878,8 @@ function renderKpiCards(mount, snap){
         <div class="kpi-spark" data-spark="${d.id}"></div>
       </div>
       <div class="kpi-note">${d.note}</div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 
   mount.querySelectorAll("[data-spark]").forEach(el => {
     const id = el.dataset.spark;
@@ -1837,7 +1892,19 @@ function renderKpiCards(mount, snap){
   });
 
   mount.querySelectorAll(".kpi").forEach(card => {
-    card.onclick = () => { STATE.view = "kpi"; STATE.kpiFocus = card.dataset.kpi; setView("kpi"); };
+    card.onclick = () => {
+      STATE.kpiFocus = card.dataset.kpi;
+      /* the deep dive now lives inside Overview — jump to it when it is on this page */
+      const tabs = $q("#kpiTabs");
+      if (tabs){
+        mountKpiDeepDive();
+        tabs.scrollIntoView({ behavior:"smooth", block:"start" });
+        window.scrollBy(0, -84);
+      } else {
+        STATE.view = "overview";
+        setView("overview");
+      }
+    };
   });
 }
 
@@ -1983,8 +2050,10 @@ function mountOverview(){
         <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][STATE.stage==="ALL"?"DVT":STATE.stage].uph}</b><span>UPH</span></div>
         <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][STATE.stage==="ALL"?"DVT":STATE.stage].oee.toFixed(0)}%</b><span>OEE</span></div>
       </div>
+      <div class="fn-spark"></div>
     </div>`).join("");
   $q$("#flowWrap .flow-node").forEach(el => el.onclick = () => { STATE.proc = el.dataset.proc; setView("processes"); });
+  bindFlowHover();
 
   // alerts — derived live from claims/FACA/projects/SPC/phases, filterable by source
   const alerts = DB.allAlerts();
@@ -2206,6 +2275,24 @@ function mountProducts(){
 }
 
 /* ---------- PROCESSES ---------- */
+/* hovering a flow node reveals that process's FPY trend inside the node itself */
+function bindFlowHover(){
+  $q$("#flowWrap .flow-node").forEach(node => {
+    const id = node.dataset.proc;
+    const box = node.querySelector(".fn-spark");
+    if (!box) return;
+    let drawn = false;
+    node.addEventListener("mouseenter", () => {
+      if (drawn) return;
+      const pr = DB.PROCESSES.find(x => x.id === id);
+      const off = (id || "").length;
+      const series = DB.KPI_SERIES.fpy.slice(-14).map((v,i) => +(v - 1.2 + ((i*off)%5)*0.18).toFixed(2));
+      CHARTS.lineChart(box, { data: series, labels: labelsFor(series, series.length), fmt: v => v.toFixed(1) + "%", target: pr ? pr.target.fpy : undefined });
+      drawn = true;
+    });
+  });
+}
+
 function viewProcesses(){
   const stage = STATE.stage === "ALL" ? "DVT" : STATE.stage;
   return `
@@ -2248,8 +2335,10 @@ function mountProcesses(){
         <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][stage].uph}</b><span>UPH</span></div>
         <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][stage].oee.toFixed(0)}%</b><span>OEE</span></div>
       </div>
+      <div class="fn-spark"></div>
     </div>`).join("");
   $q$("#flowWrap .flow-node").forEach(el => el.onclick = () => { STATE.proc = el.dataset.proc; mountProcesses(); renderProcDetail(); });
+  bindFlowHover();
 
   // funnel
   let cum = 100;
