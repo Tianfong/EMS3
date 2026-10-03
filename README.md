@@ -74,7 +74,7 @@ What changed as the dashboard matured, and what was deliberately removed.
 
 | Area | Before | After |
 |---|---|---|
-| Views | 8 pages | 6 — Products and Processes folded into the Overview once their content proved duplicative |
+| Views | 8 pages | 6 — Products and Processes folded into the Overview once their content proved duplicative, guarded by CI |
 | Line dimension | dedicated L1–L4 line health card | machine/fixture (MF-01…) filter + plant partition (A/B); no line card |
 | KPI cards | value only | delta-vs-target chips, click to jump to the matching deep-dive tab |
 | Deep dive | separate page, always open | embedded, collapsed by default, with a seven-KPI sparkline strip and sticky tabs |
@@ -100,6 +100,7 @@ app.js                Router, views, filters, modals, toasts, CSV, DataHub adapt
 build.js              Inlines the above into a single self-contained app.html
 app.html              Built artifact (one-file version of the whole app)
 tools/make-icons.js   Zero-dependency PNG encoder for the maskable PWA icons
+tools/test-structure.js  Structural guards (retired views, nav/registry consistency)
 sw.js                 PWA service worker (offline shell, stale-while-revalidate)
 manifest.webmanifest  PWA manifest (installable, fan icon)
 ARCHITECTURE.md       Handoff doc: data flow, overrides, REST contract, extensions
@@ -110,8 +111,8 @@ server/test-mes.js    Contract tests for the mock (11 assertions)
 ## Build
 
 ```bash
-npm run build   # rebuild app.html (~189 KB) from the modular sources
-npm test        # MES contract tests
+npm run build   # rebuild app.html (~191 KB) from the modular sources
+npm test        # MES contract tests + structural guards
 npm run icons   # regenerate the maskable PWA icons
 npm run mes     # start the MES mock server on http://127.0.0.1:8787
 ```
@@ -122,6 +123,21 @@ Open `index.html` directly in a browser (modular dev mode) or `app.html`
 Both `app.html` and the icon PNGs are committed artifacts. CI regenerates them
 and fails the run if either drifts from what is committed, so the deployed site
 can never disagree with the sources.
+
+## Guards
+
+`npm test` runs two suites:
+
+- **11 MES contract tests** (`server/test-mes.js`) — the REST contract the
+  DataHub adapter expects.
+- **18 structural guards** (`tools/test-structure.js`) — the *shape* of the app.
+  The Overview absorbed the Products and Processes pages, and both are easy to
+  re-add by accident, so the guards assert they stay retired. They also require
+  every nav button to have a `VIEWS` entry *and* a renderer, and vice versa —
+  which catches a view added half way. If you merge a view back deliberately,
+  remove it from the `RETIRED` allowlist in that file.
+
+CI runs both plus the generated-artefact drift check.
 
 ## REST mode (optional)
 

@@ -6,8 +6,10 @@
   "scripts": {
     "build": "node build.js",
     "icons": "node tools/make-icons.js",
+    "test:mes": "node server/test-mes.js",
+    "test:structure": "node tools/test-structure.js",
     "dev": "node build.js && node server/mes-mock.js",
     "mes": "node server/mes-mock.js",
-    "test": "node server/test-mes.js"
+    "test": "node server/test-mes.js && node tools/test-structure.js"
   }
 }

@@ -211,21 +211,48 @@ calculation.
 node build.js                 → app.html  (committed)
 node tools/make-icons.js      → icon-192.png, icon-512.png  (committed)
 node server/test-mes.js       → 11 contract tests
+node tools/test-structure.js  → 18 structural guards
 ```
 
 CI (`.github/workflows/ci.yml`) on every push to `master`:
 
 1. `node --check` on `app.js`, `charts.js`, `data.js`, `build.js`, `sw.js`,
-   `tools/make-icons.js`
+   `tools/make-icons.js`, `tools/test-structure.js`
 2. MES contract tests
-3. Regenerates the PWA icons and rebuilds `app.html`
-4. **Fails if any generated artefact differs from what is committed**
+3. Structural guards
+4. Regenerates the PWA icons and rebuilds `app.html`
+5. **Fails if any generated artefact differs from what is committed**
 
 Both generators are byte-deterministic (the icon PNGs are verified by SHA-256
-after a double run), so step 4 catches real drift and not noise. If CI fails on
+after a double run), so step 5 catches real drift and not noise. If CI fails on
 staleness, run both commands locally and commit the result.
 
 Push → CI ~1 min → GitHub Pages ~30 s.
+
+### The structural guards
+
+`tools/test-structure.js` guards the *shape* of the app rather than its data.
+The Overview absorbed the Products and Processes pages and the KPI view was
+retired earlier, and all three are easy to re-add by accident — paste a nav
+button, add a `VIEWS` entry, forget the renderer. The guards assert:
+
+- the three retired views stay retired (nav button, registry entry, renderer,
+  and any orphaned `viewX`/`mountX` function)
+- **every nav button has a `VIEWS` entry and a renderer, and vice versa** —
+  which catches a view added *half way*, the likelier accident
+- no duplicate nav buttons
+- the content the deleted pages owned is still on the Overview (`#flowWrap`,
+  `#procMatrix`, `#prodTableWrap`, `#prodSearch`, `#tblStageSeg`,
+  `#exportProducts`, `openProcModal`, `seqBreaks`)
+- the purged L1–L4 framing stays purged
+
+The registry is parsed out of `app.js` with a regex rather than by importing it,
+because `app.js` is a browser script with no module boundary — the same reason
+the app uses globals instead of imports.
+
+`npm test` runs both suites. If you re-add a deliberately-merged view on
+purpose, delete its entry from `RETIRED` in that file — it is a deliberate
+allowlist, not an accident to work around.
 
 ---
 
@@ -255,7 +282,7 @@ circle. Keep that property if you change the mark.
 | A process | append to `PROCESSES` with `PROCESS_KPI[stage]` for every stage | `data.js` |
 | A plant | append to `PLANTS`, map machines in `MACHINE_PLANT`, add a `PLANT_BIAS` entry | `data.js` |
 | A chart type | return it from the `CHARTS` IIFE | `charts.js` |
-| A view | add to `VIEWS` (title/sub), add `[viewX, mountX]` to `renderers`, add a nav button | `app.js`, `index.html` |
+| A view | add to `VIEWS` (title/sub), add `[viewX, mountX]` to `renderers`, add a nav button — all three, or `test:structure` fails | `app.js`, `index.html` |
 | An alert source | give it a `type` and push into the list `allAlerts()` builds | `data.js` |
 | A REST endpoint | extend the DataHub adapter **and** `server/mes-mock.js`, then add a test | `app.js`, `server/` |
 

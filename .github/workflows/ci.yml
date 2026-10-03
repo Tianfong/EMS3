@@ -27,9 +27,13 @@ jobs:
           node --check build.js
           node --check sw.js
           node --check tools/make-icons.js
+          node --check tools/test-structure.js
 
       - name: MES mock contract tests
-        run: npm test
+        run: npm run test:mes
+
+      - name: Structural guards
+        run: npm run test:structure
 
       - name: Regenerate PWA icons
         run: node tools/make-icons.js
