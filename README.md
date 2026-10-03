@@ -32,13 +32,13 @@ layers, the REST contract and where to extend things.
 - **6 views** — Overview, Quality·SPC, Project Gantt, FACA, Customer Claims,
   Shipments, plus a print-ready executive stage-gate report modal.
 - **Overview is the command page.** It carries the seven KPI cards, the
-  collapsible KPI Deep Dive, the product table and the process flow — a
-  sticky section nav (KPIs · Deep dive · Products · Alerts) jumps between them
-  and highlights the section in view.
+  KPI Deep Dive, the product table and the process flow — a sticky section nav
+  (KPIs · Deep dive · Products · Alerts) jumps between them and highlights the
+  section in view. The deep dive and Products & processes both collapse, and
+  both remember their state per browser.
 - **KPI deep dive** — seven tabs with a moving average, min/max envelope and a
   Blended/Per-stage overlay on FPY; a seven-KPI sparkline strip sits above the
-  tabs so every metric is visible before opening the panel. Collapsed by
-  default, remembered per browser.
+  tabs so every metric is visible before opening the panel.
 - **Cross-filtering** — Plant × Product × Stage × Lot × Side × Fixture × Range.
   Plant is the outermost partition and cascades the rest; selects stay coherent
   via `applyPlant()` / `syncSegs()`.

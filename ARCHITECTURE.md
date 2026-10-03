@@ -106,10 +106,37 @@ the baselines stop matching `PLANT_BIAS`.
 
 It is **not persisted** except where noted in §4. A reload resets filters to
 defaults. The exceptions are deliberate and each uses its own key:
-`fdb-kpi-collapsed` (deep-dive collapse), `fdb-dh-mode` / `fdb-dh-url`
-(DataHub), `fdb-overrides-v1` (data edits).
+`fdb-kpi-collapsed` and `fdb-products-collapsed` (section collapse),
+`fdb-dh-mode` / `fdb-dh-url` (DataHub), `fdb-overrides-v1` (data edits).
 
-### 3.3 Filtering
+### 3.3 Collapsible sections
+
+The Overview's two heaviest sections — the KPI Deep Dive and Products &
+processes — collapse, and both default to collapsed so the command page opens
+scannable. The mechanism is a config table, not two copies of the same code:
+
+```js
+const COLLAPSE = {
+  kpi:   { panel:"#kpiPanel",  toggle:"#kpiToggle",  head:"ovDeepDive", key:"fdb-kpi-collapsed",      collapsedByDefault:true },
+  prods: { panel:"#prodPanel", toggle:"#prodToggle", head:"ovProducts", key:"fdb-products-collapsed", collapsedByDefault:true },
+};
+```
+
+`bindCollapse(cfg)` applies the remembered state and wires the toggle, and must
+run on every mount. `expandPanel(cfg)` opens a section from a jump path. Adding
+a third collapsible section is one config entry plus the markup — no new
+functions.
+
+Two things that are easy to get wrong here:
+
+- **Never jump to a collapsed section.** The section nav calls `expandPanel`
+  before scrolling, and KPI cards call it before focusing a tab, so a link never
+  lands you on something invisible.
+- **Panels still mount while hidden.** `#prodPanel` only wraps the markup; the
+  product table, flow and matrix are all rendered on mount either way, so
+  expanding never reveals an empty panel.
+
+### 3.4 Filtering
 
 Plant is the **outermost** filter. `applyPlant()` re-derives the machine
 segment, the product select and the lot select, and clears any now out-of-scope
@@ -118,7 +145,7 @@ plant → product → stage → side → machine. Change the order in `filteredP
 and the cascading behaviour changes; change `applyPlant()` and the selects drift
 out of sync with the data.
 
-### 3.4 Rendering
+### 3.5 Rendering
 
 Two-phase per view: `viewX()` returns an HTML string, `mountX()` queries the
 result and binds events. The split exists because `mountOverview()` re-runs

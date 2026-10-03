@@ -2040,7 +2040,8 @@ function viewOverview(){
     <div id="kpiBody"></div>
   </div>
 
-  <div class="sec-head" id="ovProducts"><h2>Products & processes</h2><div class="rule"></div><span class="pill">${DB.PROCESSES.length} processes · ${snap.nProducts} of ${DB.PRODUCTS.length} products · ${scopedLotIds().length} lots</span></div>
+  <div class="sec-head" id="ovProducts"><h2>Products & processes</h2><div class="rule"></div><span class="pill">${DB.PROCESSES.length} processes · ${snap.nProducts} of ${DB.PRODUCTS.length} products · ${scopedLotIds().length} lots</span><button class="mini-btn" id="prodToggle" aria-expanded="true">▾ Hide</button></div>
+  <div id="prodPanel">
   <div class="card" style="padding:6px 10px">
     <div class="card-head"><h3>Products at a glance</h3>
       <span class="sub">
@@ -2064,6 +2065,7 @@ function viewOverview(){
   <div class="card" style="margin-top:14px;padding:6px 10px">
     <div class="card-head"><h3>Stage × process FPY matrix</h3><span class="sub"><span class="pill">heat view — click a row for detail</span></span></div>
     <div class="table-wrap" id="procMatrix" style="border:none"></div>
+  </div>
   </div><div class="grid g-2" style="margin-top:14px" id="ovAlerts">
     <div class="card">
       <div class="card-head">
@@ -2098,6 +2100,8 @@ function mountOverview(){
   $q$("#secNav a[data-target]").forEach(a => {
     a.onclick = e => {
       e.preventDefault();
+      /* never jump the user to a section that is collapsed — open it first */
+      expandPanel(collapseCfgFor(a.dataset.target));
       document.getElementById(a.dataset.target)?.scrollIntoView({ behavior:"smooth", block:"start" });
     };
   });
@@ -2192,22 +2196,9 @@ function mountOverview(){
   // customer health — yield rolled up by account, scoped to the current filters
   $q("#custList").innerHTML = customerHealthHTML();
 
-  // section 2 — the KPI deep dive lives inside the overview
-  const panel = $q("#kpiPanel");
-  const collapsed = kpiCollapsed();
-  if (panel) panel.hidden = collapsed;
-  const tg = $q("#kpiToggle");
-  if (tg){
-    tg.textContent = collapsed ? "▸ Show" : "▾ Hide";
-    tg.setAttribute("aria-expanded", String(!collapsed));
-    tg.onclick = () => {
-      const hide = !panel.hidden;
-      panel.hidden = hide;
-      setKpiCollapsed(hide);
-      tg.textContent = hide ? "▸ Show" : "▾ Hide";
-      tg.setAttribute("aria-expanded", String(!hide));
-    };
-  }
+  // sections 2 and 3 — the deep dive and Products & processes, both collapsible
+  bindCollapse(COLLAPSE.kpi);
+  bindCollapse(COLLAPSE.prods);
   mountKpiDeepDive();
 }
 
@@ -2324,23 +2315,50 @@ function refreshProductTable(){
   if (c){ const n = sortedProducts().length; c.textContent = `${n} product${n===1?"":"s"}`; }
 }
 
-/* deep dive panel collapse state — remembered per user, collapsed by default
-   so the command page stays scannable                                        */
-function kpiCollapsed(){
-  try { return localStorage.getItem("fdb-kpi-collapsed") !== "0"; } catch(e){ return true; }
+/* ---------- collapsible Overview sections ----------
+   The command page is long, so its two heaviest sections collapse. State is
+   remembered per browser in localStorage and both default to collapsed.
+   One mechanism for both, so adding a third section is a config entry. */
+const COLLAPSE = {
+  kpi:   { panel:"#kpiPanel",   toggle:"#kpiToggle",   head:"ovDeepDive", key:"fdb-kpi-collapsed",      collapsedByDefault:true },
+  prods: { panel:"#prodPanel",  toggle:"#prodToggle",  head:"ovProducts", key:"fdb-products-collapsed", collapsedByDefault:true },
+};
+const collapseCfgFor = head => Object.keys(COLLAPSE).map(k => COLLAPSE[k]).find(c => c.head === head);
+
+function isCollapsed(cfg){
+  try { const v = localStorage.getItem(cfg.key); return v === null ? cfg.collapsedByDefault : v !== "0"; }
+  catch(e){ return cfg.collapsedByDefault; }
 }
-function setKpiCollapsed(v){
-  try { localStorage.setItem("fdb-kpi-collapsed", v ? "1" : "0"); } catch(e){}
+function setCollapsed(cfg, v){
+  try { localStorage.setItem(cfg.key, v ? "1" : "0"); } catch(e){}
 }
-function expandKpiPanel(){
-  const p = $q("#kpiPanel");
-  if (p && p.hidden){
-    p.hidden = false;
-    setKpiCollapsed(false);
-    const t = $q("#kpiToggle");
-    if (t){ t.textContent = "▾ Hide"; t.setAttribute("aria-expanded", "true"); }
-  }
+/* Apply the remembered state and wire the toggle. Must run on every mount —
+   mountOverview re-renders every 15s. */
+function bindCollapse(cfg){
+  const panel = $q(cfg.panel), tg = $q(cfg.toggle);
+  if (!panel || !tg) return;
+  panel.hidden = isCollapsed(cfg);
+  const paint = () => {
+    tg.textContent = panel.hidden ? "▸ Show" : "▾ Hide";
+    tg.setAttribute("aria-expanded", String(!panel.hidden));
+  };
+  paint();
+  tg.onclick = () => {
+    panel.hidden = !panel.hidden;
+    setCollapsed(cfg, panel.hidden);
+    paint();
+  };
 }
+/* Used by the jump paths — a KPI card or a section-nav link should never land
+   you on a collapsed section. */
+function expandPanel(cfg){
+  const panel = $q(cfg && cfg.panel), tg = $q(cfg && cfg.toggle);
+  if (!panel || !panel.hidden) return;
+  panel.hidden = false;
+  setCollapsed(cfg, false);
+  if (tg){ tg.textContent = "▾ Hide"; tg.setAttribute("aria-expanded", "true"); }
+}
+const expandKpiPanel = () => expandPanel(COLLAPSE.kpi);
 
 /* hovering a flow node reveals that process's FPY trend inside the node itself */
 function bindFlowHover(){
