@@ -1272,6 +1272,7 @@ function mountGantt(){
     </div>
     ${rows.map(r => {
       const phasesDone = byLot ? Math.round(r.tasks.reduce((s,t)=>s+t.done,0)/Math.max(1,r.tasks.length)) : null;
+      const broken = seqBreaks(r.tasks);
       const barColor = t => byLot
         ? (t.done>=100 ? PHASE_COLOR[t.name] || "var(--good)" : PHASE_COLOR[t.name] || "var(--acc)")
         : (t.flag==="claim" ? "var(--bad)" : (r.health==="amber" && t.done>0 && t.done<100) ? "var(--warn)" : stageColor[t.stage] || "var(--acc)");
@@ -1292,9 +1293,10 @@ function mountGantt(){
             const onFill = (w * t.done / 100) >= 24; /* label rides the solid fill? */
             const late = t.done < 100 && t.e && t.e < isoOf(DB.TODAY);
             const crit = byLot && ti > 0 && t.done < 100 && (r.tasks[ti-1].done >= 100);
-            const cls = `g-bar ${byLot?"g-bar-lot":""}${t.done>=100?" g-done":""}${crit?" g-crit":""}${late?" g-risk":""}`;
+            const brk = broken[ti];
+            const cls = `g-bar ${byLot?"g-bar-lot":""}${t.done>=100?" g-done":""}${crit?" g-crit":""}${late?" g-risk":""}${brk?" g-seqbreak":""}`;
             return `<div class="${cls}" data-row="${r.key}" data-phase-idx="${ti}" data-task="${esc(t.name)}"
-              style="left:${l.toFixed(1)}px;width:${w.toFixed(1)}px;--pb:${color}"title="${esc(r.label)} · ${esc(t.name)} · ${t.s} → ${t.e} · ${t.done}% complete${late? " · ⚠ OVERDUE":""}${crit? " · next in critical chain":""}"><i class="g-fill" style="width:${t.done}%"></i>${showTxt && t.done>0 ? `<b class="g-txt${onFill?"":" g-txt-lo"}">${t.done}%</b>` : ""}<i class="g-grip g-gstart" title="Drag to move the start date"></i><i class="g-grip" title="Drag to extend"></i></div>`;
+              style="left:${l.toFixed(1)}px;width:${w.toFixed(1)}px;--pb:${color}"title="${esc(r.label)} · ${esc(t.name)} · ${t.s} → ${t.e} · ${t.done}% complete${late? " · ⚠ OVERDUE":""}${crit? " · next in critical chain":""}${brk? " · ⚠ sequence broken — a neighbouring phase overlaps it":""}"><i class="g-fill" style="width:${t.done}%"></i>${showTxt && t.done>0 ? `<b class="g-txt${onFill?"":" g-txt-lo"}">${t.done}%</b>` : ""}<i class="g-grip g-gstart" title="Drag to move the start date"></i><i class="g-grip" title="Drag to extend"></i></div>`;
           }).join("")}
           ${byLot ? ganttDepsSvg(r, x) : ""}
         </div>
@@ -1354,6 +1356,20 @@ function mountGantt(){
 }
 
 /* ---------- gantt: dependency arrows (lot mode: consecutive phases in the 5-step flow) ---------- */
+
+/* Which phases sit in a broken sequence? A successor that starts before its
+   predecessor ends breaks the 5-step flow — whether it overlaps it or runs
+   entirely before it. BOTH phases get flagged so the bars can be outlined; the
+   connecting arrow alone is easy to miss because it is drawn across a bar. A
+   same-day hand-off is normal, so only a strict overlap counts. */
+function seqBreaks(tasks){
+  const flags = tasks.map(() => false);
+  for (let i = 0; i < tasks.length - 1; i++){
+    if (tasks[i+1].s < tasks[i].e){ flags[i] = true; flags[i+1] = true; }
+  }
+  return flags;
+}
+
 function ganttDepsSvg(r, x){
   const segs = [];
   const y1 = 15;
@@ -1361,16 +1377,21 @@ function ganttDepsSvg(r, x){
     const a = r.tasks[i], b = r.tasks[i+1];
     const ax = x(a.e) + 2, bx = x(b.s) - 3;
     const title = `${a.name} ends ${a.e} → ${b.name} starts ${b.s}`;
-    /* a successor that starts before its predecessor has finished breaks the
-       5-step sequence. A same-day hand-off is normal, so only a strict
-       overlap counts. There is no forward gap to draw, so show the overlap
-       explicitly in alarm colour instead of silently hiding it. */
     if (b.s < a.e){
-      const from = x(b.s) + 2;
-      const to = Math.max(x(a.e) - 3, from + 7);
-      segs.push(`<g class="g-dep-bad"><title>${esc(title)} — sequence broken, phases overlap</title>` +
-        `<line x1="${from.toFixed(1)}" y1="${y1}" x2="${(to-6).toFixed(1)}" y2="${y1}"/>` +
-        `<path d="M${to.toFixed(1)},${y1} l-6,-3.5 v7 z"/></g>`);
+      if (b.e <= a.s){
+        /* not an overlap — the successor runs entirely before its predecessor,
+           so the order is simply wrong. Point backwards to say so. */
+        const from = x(a.s) - 2, to = x(b.e) + 3;
+        segs.push(`<g class="g-dep-bad"><title>${esc(title)} — sequence broken, ${esc(b.name)} runs before ${esc(a.name)}</title>` +
+          `<line x1="${from.toFixed(1)}" y1="${y1}" x2="${(to+6).toFixed(1)}" y2="${y1}"/>` +
+          `<path d="M${to.toFixed(1)},${y1} l6,-3.5 v7 z"/></g>`);
+      } else {
+        const from = x(b.s) + 2;
+        const to = Math.max(x(a.e) - 3, from + 7);
+        segs.push(`<g class="g-dep-bad"><title>${esc(title)} — sequence broken, phases overlap</title>` +
+          `<line x1="${from.toFixed(1)}" y1="${y1}" x2="${(to-6).toFixed(1)}" y2="${y1}"/>` +
+          `<path d="M${to.toFixed(1)},${y1} l-6,-3.5 v7 z"/></g>`);
+      }
       continue;
     }
     if (bx - ax < 5) continue;                       /* phases touch — no room for an arrow */
