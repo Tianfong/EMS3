@@ -231,21 +231,6 @@ td.mono{font-family:var(--mono);font-size:12px}
 .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .trunc{max-width:260px;overflow:hidden;text-overflow:ellipsis}
 
-/* stage pipeline */
-.pipe{display:flex;gap:0;align-items:stretch;overflow-x:auto;padding:6px 2px}
-.pipe-stage{
-  flex:1;min-width:118px;position:relative;padding:12px 14px 12px 24px;
-  background:var(--glass);border:1px solid var(--line);border-right:none;
-  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%,14px 50%);
-  margin-left:-14px;cursor:pointer;transition:.18s;
-}
-.pipe-stage:first-child{margin-left:0;border-radius:10px 0 0 10px;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%);padding-left:14px}
-.pipe-stage:last-child{border-right:1px solid var(--line);border-radius:0 10px 10px 0}
-.pipe-stage:hover{transform:translateY(-2px);z-index:2}
-.pipe-stage.on{outline:2px solid var(--acc);outline-offset:-2px;z-index:1}
-.pipe-stage .ps-name{font-size:12px;font-weight:800;letter-spacing:.6px}
-.pipe-stage .ps-val{font-size:20px;font-weight:800;font-family:var(--mono);margin:2px 0}
-.pipe-stage .ps-sub{font-size:10.5px;color:var(--txt3)}
 
 /* progress bars */
 .bar{height:7px;border-radius:6px;background:var(--glass);overflow:hidden;border:1px solid var(--line)}
@@ -455,7 +440,7 @@ body.g-dragging .g-bar{transition:none}
 .sec-nav a:hover{color:var(--txt);background:var(--glass)}
 .sec-nav a.on{color:var(--acc);background:var(--acc-soft)}
 .sec-nav .sn-dot{width:4px;height:4px;border-radius:50%;background:var(--line2);flex:none}
-#kpiCards,#ovPipeline,#ovDeepDive,#ovProducts,#ovAlerts{scroll-margin-top:116px}
+#kpiCards,#ovDeepDive,#ovProducts,#ovAlerts{scroll-margin-top:116px}
 
 /* KPI deep-dive panel — trend strip + sticky tabs */
 #kpiPanel{margin-top:2px}

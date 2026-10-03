@@ -441,31 +441,24 @@ function kpiSeries(id, raw, n=14, mult=1){
 }
 
 /* ---------- OVERVIEW ---------- */
+/* production lots left in scope by the current filters — the Overview used to
+   show these as a strip of chips, but the top bar already filters by lot and
+   stage, so only the count is still worth showing */
+function scopedLotIds(){
+  return [...new Set(filteredProducts().flatMap(p => DB.PRODUCT_LOTS[p.id] || []))];
+}
+
 function viewOverview(){
   const snap = kpiSnapshot();
 
   return `
   <nav class="sec-nav" id="secNav" aria-label="Page sections">
     <a data-target="kpiCards">KPIs</a><span class="sn-dot"></span>
-    <a data-target="ovPipeline">Pipeline</a><span class="sn-dot"></span>
     <a data-target="ovDeepDive">Deep dive</a><span class="sn-dot"></span>
     <a data-target="ovProducts">Products</a><span class="sn-dot"></span>
     <a data-target="ovAlerts">Alerts</a>
   </nav>
   <div class="grid g-kpi" id="kpiCards">${""}</div>
-
-  <div class="grid g-2" style="margin-top:14px" id="ovPipeline">
-    <div class="card">
-      <div class="card-head"><h3>NPI stage pipeline</h3><span class="sub"><span class="pill">units & FPY</span></span></div>
-      <div class="pipe" id="pipeWrap"></div>
-      <div class="card-head" style="margin-top:14px"><h3>Side split — RHS vs LHS</h3></div>
-      <div id="sideSplit" style="display:flex;flex-direction:column;gap:10px"></div>
-    </div>
-    <div class="card">
-      <div class="card-head"><h3>Active lots in current scope</h3></div>
-      <div id="lotStrip" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-    </div>
-  </div>
 
   <div class="sec-head" id="ovDeepDive">
     <h2>KPI Deep Dive</h2><div class="rule"></div>
@@ -480,7 +473,7 @@ function viewOverview(){
     <div id="kpiBody"></div>
   </div>
 
-  <div class="sec-head" id="ovProducts"><h2>Products & processes</h2><div class="rule"></div><span class="pill">${DB.PROCESSES.length} processes · ${snap.nProducts} of ${DB.PRODUCTS.length} products</span></div>
+  <div class="sec-head" id="ovProducts"><h2>Products & processes</h2><div class="rule"></div><span class="pill">${DB.PROCESSES.length} processes · ${snap.nProducts} of ${DB.PRODUCTS.length} products · ${scopedLotIds().length} lots</span></div>
   <div class="card" style="padding:6px 10px">
     <div class="card-head"><h3>Products at a glance</h3><span class="sub"><span class="pill">sortable — click a row for detail</span></span></div>
     <div class="table-wrap" style="border:none">
@@ -539,42 +532,6 @@ function mountOverview(){
       window.scrollBy(0, -84);   /* clear the sticky topbar */
       toast(`Deep dive → <b>${esc(card.querySelector(".kpi-name").textContent)}</b>`, "good");
     };
-  });
-
-  // pipeline
-  $q("#pipeWrap").innerHTML = DB.PIPELINE.map(p => `
-    <div class="pipe-stage ${STATE.stage===p.stage?"on":""}" data-stage="${p.stage}">
-      <div class="ps-name">${p.stage}</div>
-      <div class="ps-val">${DB.fmtW(p.units)}</div>
-      <div class="ps-sub">FPY ${p.fpy}%</div>
-    </div>`).join("");
-  $q$("#pipeWrap .pipe-stage").forEach(el => el.onclick = () => {
-    STATE.stage = STATE.stage === el.dataset.stage ? "ALL" : el.dataset.stage;
-    syncSegs(); setView(STATE.view); toast(`Stage filter → <b>${STATE.stage}</b>`);
-  });
-
-  // side split bars
-  const r = DB.SIDE_KPI.RHS, l = DB.SIDE_KPI.LHS;
-  $q("#sideSplit").innerHTML = `
-    ${sideRow("RHS", r)}${sideRow("LHS", l)}`;
-
-  // active lots strip — clickable chips scoped to the current filters
-  const scopedLots = [...new Set(filteredProducts().flatMap(p => DB.PRODUCT_LOTS[p.id] || []))]
-    .map(id => DB.LOTS.find(l => l.id===id)).filter(Boolean);
-  $q("#lotStrip").innerHTML = scopedLots.length ? scopedLots.map(l => {
-    const k = DB.LOT_KPI[l.id];
-    const on = STATE.lot === l.id;
-    return `<button class="pill ${on?"acc":k.fpy>=96.5?"good":k.fpy>=94?"warn":"bad"}" data-lot="${l.id}"
-      style="cursor:pointer;border:${on?"2px":"1px"} solid var(--line2)" title="FPY ${k.fpy}% · FY ${k.fy}% · UPH ${k.uph} · OEE ${k.oee}%">
-      ${l.id} · ${l.stage} · FPY ${k.fpy}%
-    </button>`;
-  }).join("") : `<span class="empty">No lots in scope</span>`;
-  $q$("#lotStrip [data-lot]").forEach(b => b.onclick = () => {
-    STATE.lot = STATE.lot === b.dataset.lot ? "ALL" : b.dataset.lot;
-    const l = DB.LOTS.find(x => x.id === STATE.lot);
-    if (l && STATE.stage === "ALL") STATE.stage = l.stage;
-    syncSegs(); setView(STATE.view);
-    toast(`Lot → <b>${STATE.lot}</b>`);
   });
 
   // flow
