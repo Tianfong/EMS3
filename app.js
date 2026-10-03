@@ -35,7 +35,6 @@ const STATE = {
 
 const VIEWS = {
   overview:  { title:"Overview",       sub:"New Product Introduction · real-time command view" },
-  products:  { title:"Products",       sub:"X4151–X4156 · stage, side, yield & volume" },
   processes: { title:"Processes",      sub:"Rotor · Pillow-stator · Fan assembly · Test accessory" },
   quality:   { title:"Quality — SPC",  sub:"Control charts · Cpk · Pareto · defect mix" },
   gantt:     { title:"Projects — Gantt", sub:"NPI stage gates & ramp plan" },
@@ -475,8 +474,18 @@ function viewOverview(){
 
   <div class="sec-head" id="ovProducts"><h2>Products & processes</h2><div class="rule"></div><span class="pill">${DB.PROCESSES.length} processes · ${snap.nProducts} of ${DB.PRODUCTS.length} products · ${scopedLotIds().length} lots</span></div>
   <div class="card" style="padding:6px 10px">
-    <div class="card-head"><h3>Products at a glance</h3><span class="sub"><span class="pill">sortable — click a row for detail</span></span></div>
-    <div class="table-wrap" style="border:none">
+    <div class="card-head"><h3>Products at a glance</h3>
+      <span class="sub">
+        <span class="pill acc" id="prodCount">${sortedProducts().length} products</span>
+        <span class="pill">sortable — click a row for detail</span>
+        <button class="mini-btn" id="exportProducts" title="Export the product portfolio as CSV">⬇ CSV</button>
+      </span>
+    </div>
+    <div class="tbl-tools">
+      <input id="prodSearch" class="mini-input" type="search" placeholder="Search id, model, customer, fixture…" value="${esc(STATE.tblSearch)}" aria-label="Search products"/>
+      <div class="seg" id="tblStageSeg" role="group" aria-label="Stage pill filter" style="display:inline-flex;flex-wrap:wrap"></div>
+    </div>
+    <div class="table-wrap" id="prodTableWrap" style="border:none">
       ${productTableHTML()}
     </div>
   </div>
@@ -533,6 +542,23 @@ function mountOverview(){
       toast(`Deep dive → <b>${esc(card.querySelector(".kpi-name").textContent)}</b>`, "good");
     };
   });
+
+  // products table — inline search and stage pills update the rows live,
+  // re-rendering only the table so the search box keeps focus while typing
+  bindSort();
+  $q("#exportProducts").onclick = exportProducts;
+  const tblSeg = $q("#tblStageSeg");
+  if (tblSeg){
+    const inScope = DB.STAGES.filter(s => filteredProducts().some(p => p.stage === s));
+    tblSeg.innerHTML = `<button data-v="ALL" class="${STATE.tblStage==="ALL"?"on":""}">All</button>` +
+      inScope.map(s => `<button data-v="${s}" class="${STATE.tblStage===s?"on":""}">${s}</button>`).join("");
+    tblSeg.querySelectorAll("button").forEach(b => b.onclick = () => {
+      STATE.tblStage = b.dataset.v;
+      tblSeg.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      refreshProductTable();
+    });
+  }
+  $q("#prodSearch").oninput = e => { STATE.tblSearch = e.target.value; refreshProductTable(); };
 
   // flow
   $q("#flowWrap").innerHTML = DB.PROCESSES.map((pr,i) => `
@@ -698,7 +724,8 @@ function bindSort(){
     const key = th.dataset.sort;
     if (STATE.sortKey === key) STATE.sortDir *= -1;
     else { STATE.sortKey = key; STATE.sortDir = 1; }
-    if (STATE.view === "products"){ const w = $q("#prodTableWrap"); if (w){ w.innerHTML = productTableHTML(); bindSort(); } }
+    const w = $q("#prodTableWrap");
+    if (w){ w.innerHTML = productTableHTML(); bindSort(); }
   });
 }
 /* re-render just the table so the search box keeps focus while typing */
@@ -709,81 +736,6 @@ function refreshProductTable(){
   bindSort();
   const c = $q("#prodCount");
   if (c){ const n = sortedProducts().length; c.textContent = `${n} product${n===1?"":"s"}`; }
-}
-
-function viewProducts(){
-  return `
-  <div class="grid g-kpi" id="kpiCards"></div>
-  <div class="card" style="margin-top:14px;padding:6px 10px">
-    <div class="card-head" style="padding:10px 6px 4px">
-      <h3>Product portfolio</h3>
-      <span class="sub">
-        <span class="pill acc" id="prodCount">${filteredProducts().length} products</span>
-        <button class="mini-btn" id="exportProducts">⬇ CSV</button>
-      </span>
-    </div>
-    <div class="tbl-tools">
-      <input id="prodSearch" class="mini-input" type="search" placeholder="Search id, model, customer, fixture…" value="${esc(STATE.tblSearch)}" aria-label="Search products"/>
-      <div class="seg" id="tblStageSeg" role="group" aria-label="Stage pill filter" style="display:inline-flex;flex-wrap:wrap"></div>
-    </div>
-    <div class="table-wrap" id="prodTableWrap" style="border:none">${productTableHTML()}</div>
-  </div>
-  <div class="grid g-2" style="margin-top:14px">
-    <div class="card">
-      <div class="card-head"><h3>FPY by product</h3><span class="sub"><span class="pill acc">current</span></span></div>
-      <div id="prodFpyBars" style="display:flex;flex-direction:column;gap:10px"></div>
-    </div>
-    <div class="card">
-      <div class="card-head"><h3>FPY trend by product</h3><span class="sub"><span class="pill">28d</span></span></div>
-      <div id="prodFpyChart"></div>
-    </div>
-  </div>`;
-}
-
-function mountProducts(){
-  renderKpiCards($q("#kpiCards"), kpiSnapshot());
-  bindSort();
-  const eb = $q("#exportProducts"); if (eb) eb.onclick = exportProducts;
-
-  // inline search + stage pills — update the rows live, without re-rendering the tools
-  const seg = $q("#tblStageSeg");
-  if (seg){
-    const inScope = DB.STAGES.filter(s => filteredProducts().some(p => p.stage === s));
-    seg.innerHTML = `<button data-v="ALL" class="${STATE.tblStage==="ALL"?"on":""}">All</button>` +
-      inScope.map(s => `<button data-v="${s}" class="${STATE.tblStage===s?"on":""}">${s}</button>`).join("");
-    seg.querySelectorAll("button").forEach(b => b.onclick = () => {
-      STATE.tblStage = b.dataset.v;
-      seg.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
-      refreshProductTable();
-    });
-  }
-  const inp = $q("#prodSearch");
-  if (inp) inp.oninput = () => { STATE.tblSearch = inp.value; refreshProductTable(); };
-  const c = $q("#prodCount"); if (c){ const n = sortedProducts().length; c.textContent = `${n} product${n===1?"":"s"}`; }
-  $q("#prodFpyBars").innerHTML = sortedProducts().map(p => {
-    const k = DB.PRODUCT_KPI[p.id];
-    const w = (k.fpy-84)/(100-84)*100;
-    return `<div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
-        <b>${p.id} <span style="color:var(--txt3);font-weight:500">· ${esc(p.name)}</span></b>
-        <span class="mono">${k.fpy.toFixed(1)}% <span style="color:var(--txt3)">/ 96.5 target</span></span>
-      </div>
-      <div class="bar"><i class="${k.fpy>=96.5?"g":k.fpy>=94?"w":"b"}" style="width:${Math.max(3,w).toFixed(0)}%"></i></div>
-    </div>`;
-  }).join("") || `<div class="empty">No products match filters</div>`;
-
-  // composite chart: average of filtered products' fpys
-  const prods = filteredProducts();
-  const len = 28;
-  const avg = Array.from({length:len}, (_,i) => {
-    if (!prods.length) return 95;
-    const vals = prods.map(p => DB.PRODUCT_KPI[p.id].fpys[i]);
-    return +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2);
-  });
-  CHARTS.lineChart($q("#prodFpyChart"), {
-    data: avg, labels: labelsFor(avg, len), target: 96.5,
-    fmt: v => v.toFixed(1),
-  });
 }
 
 /* deep dive panel collapse state — remembered per user, collapsed by default
@@ -2062,7 +2014,6 @@ function setView(v){
 
   const renderers = {
     overview:  [viewOverview,  mountOverview],
-    products:  [viewProducts,  mountProducts],
     processes: [viewProcesses, mountProcesses],
     quality:   [viewQuality,   mountQuality],
     gantt:     [viewGantt,     mountGantt],
