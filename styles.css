@@ -274,7 +274,10 @@ td.mono{font-family:var(--mono);font-size:12px}
   border-radius:14px;padding:12px;cursor:pointer;transition:.18s;position:relative;
 }
 .flow-node:hover{transform:translateY(-2px);border-color:var(--line2)}
-.flow-node.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc),0 8px 22px -10px rgba(56,189,248,.5)}
+.flow-node:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+/* matrix rows open the same process modal as the flow nodes */
+#procMatrix tbody tr{cursor:pointer}
+#procMatrix tbody tr:hover{background:var(--glass)}
 .flow-arrow{flex:none;width:34px;height:2px;background:var(--line2);position:relative;margin:0 2px}
 .flow-arrow::after{
   content:"";position:absolute;right:-1px;top:-4px;border:5px solid transparent;border-left-color:var(--line2);

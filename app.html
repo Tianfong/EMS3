@@ -299,7 +299,10 @@ td.mono{font-family:var(--mono);font-size:12px}
   border-radius:14px;padding:12px;cursor:pointer;transition:.18s;position:relative;
 }
 .flow-node:hover{transform:translateY(-2px);border-color:var(--line2)}
-.flow-node.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc),0 8px 22px -10px rgba(56,189,248,.5)}
+.flow-node:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+/* matrix rows open the same process modal as the flow nodes */
+#procMatrix tbody tr{cursor:pointer}
+#procMatrix tbody tr:hover{background:var(--glass)}
 .flow-arrow{flex:none;width:34px;height:2px;background:var(--line2);position:relative;margin:0 2px}
 .flow-arrow::after{
   content:"";position:absolute;right:-1px;top:-4px;border:5px solid transparent;border-left-color:var(--line2);
@@ -624,7 +627,6 @@ body.g-dragging .g-bar{transition:none}
 
     <nav class="nav" id="nav" aria-label="Primary">
       <button class="nav-item active" data-view="overview"><span class="nav-ico">◉</span>Overview<span class="nav-badge" id="badgeAlerts">3</span></button>
-      <button class="nav-item" data-view="processes"><span class="nav-ico">⚙</span>Processes</button>
       <button class="nav-item" data-view="quality"><span class="nav-ico">📊</span>Quality · SPC</button>
       <button class="nav-item" data-view="gantt"><span class="nav-ico">🗓</span>Project Gantt<span class="nav-badge amber" id="badgeAtRisk">2</span></button>
       <button class="nav-item" data-view="faca"><span class="nav-ico">✎</span>FACA<span class="nav-badge" id="badgeFaca">4</span></button>
@@ -1594,7 +1596,6 @@ const STATE = {
 
 const VIEWS = {
   overview:  { title:"Overview",       sub:"New Product Introduction · real-time command view" },
-  processes: { title:"Processes",      sub:"Rotor · Pillow-stator · Fan assembly · Test accessory" },
   quality:   { title:"Quality — SPC",  sub:"Control charts · Cpk · Pareto · defect mix" },
   gantt:     { title:"Projects — Gantt", sub:"NPI stage gates & ramp plan" },
   faca:      { title:"FACA",           sub:"Follow-up & Corrective Action Committee" },
@@ -2051,6 +2052,10 @@ function viewOverview(){
   <div class="card" style="margin-top:14px">
     <div class="card-head"><h3>Process health</h3><span class="sub"><span class="pill pur">flow: rotor → stator → fan → test</span></span></div>
     <div class="flow" id="flowWrap"></div>
+  </div>
+  <div class="card" style="margin-top:14px;padding:6px 10px">
+    <div class="card-head"><h3>Stage × process FPY matrix</h3><span class="sub"><span class="pill">heat view — click a row for detail</span></span></div>
+    <div class="table-wrap" id="procMatrix" style="border:none"></div>
   </div><div class="grid g-2" style="margin-top:14px" id="ovAlerts">
     <div class="card">
       <div class="card-head">
@@ -2134,8 +2139,22 @@ function mountOverview(){
       </div>
       <div class="fn-spark"></div>
     </div>`).join("");
-  $q$("#flowWrap .flow-node").forEach(el => el.onclick = () => { STATE.proc = el.dataset.proc; setView("processes"); });
+  $q$("#flowWrap .flow-node").forEach(el => el.onclick = () => openProcModal(el.dataset.proc));
   bindFlowHover();
+
+  // stage x process FPY heat table — the one thing the old Processes page
+  // showed that nothing else did
+  const cell = v => `<td><span class="pill ${v>=96.5?"good":v>=94?"warn":"bad"}">${v.toFixed(1)}</span></td>`;
+  $q("#procMatrix").innerHTML = `<table>
+    <thead><tr><th>Process</th>${DB.STAGES.map(s=>`<th>${s}</th>`).join("")}</tr></thead>
+    <tbody>
+      ${DB.PROCESSES.map(pr => `<tr data-proc="${pr.id}">
+        <td><b>${pr.ico} ${pr.name}</b></td>
+        ${DB.STAGES.map(st => cell(DB.PROCESS_KPI[pr.id][st].fpy)).join("")}
+      </tr>`).join("")}
+    </tbody>
+  </table>`;
+  $q$("#procMatrix tbody tr").forEach(tr => tr.onclick = () => openProcModal(tr.dataset.proc));
 
   // alerts — derived live from claims/FACA/projects/SPC/phases, filterable by source
   const alerts = DB.allAlerts();
@@ -2333,112 +2352,36 @@ function bindFlowHover(){
   });
 }
 
-function viewProcesses(){
-  const stage = STATE.stage === "ALL" ? "DVT" : STATE.stage;
-  return `
-  <div class="grid g-32" style="margin-top:2px">
-    <div class="card">
-      <div class="card-head">
-        <h3>Process flow — click a node</h3>
-        <span class="sub"><span class="pill pur">stage: ${stage}</span></span>
-      </div>
-      <div class="flow" id="flowWrap"></div>
-    </div>
-    <div class="card">
-      <div class="card-head"><h3>Yield funnel (FPY)</h3></div>
-      <div id="funnel" style="display:flex;flex-direction:column;gap:10px"></div>
-    </div>
-  </div>
-  <div class="grid g-2" style="margin-top:14px">
-    <div class="card">
-      <div class="card-head"><h3 id="procDetailTitle">Select a process</h3></div>
-      <div id="procDetail" class="empty">Click a process node to see its stage matrix, FPY trend and open issues.</div>
-    </div>
-    <div class="card">
-      <div class="card-head"><h3>Stage × process FPY matrix</h3><span class="sub"><span class="pill">heat view</span></span></div>
-      <div class="table-wrap" id="procMatrix"></div>
-    </div>
-  </div>`;
-}
-
-function mountProcesses(){
-  const stage = STATE.stage === "ALL" ? "DVT" : STATE.stage;
-  $q("#flowWrap").innerHTML = DB.PROCESSES.map((pr,i) => `
-    ${i ? '<div class="flow-arrow"></div>' : ""}
-    <div class="flow-node ${STATE.proc===pr.id?"on":""}" data-proc="${pr.id}">
-      <div class="fn-head">
-        <div class="fn-ico">${pr.ico}</div>
-        <div><div class="fn-name">${pr.name}</div><div class="fn-sub">target FPY ${pr.target.fpy}%</div></div>
-      </div>
-      <div class="fn-kpis">
-        <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][stage].fpy.toFixed(1)}%</b><span>FPY</span></div>
-        <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][stage].uph}</b><span>UPH</span></div>
-        <div class="fn-kpi"><b>${DB.PROCESS_KPI[pr.id][stage].oee.toFixed(0)}%</b><span>OEE</span></div>
-      </div>
-      <div class="fn-spark"></div>
-    </div>`).join("");
-  $q$("#flowWrap .flow-node").forEach(el => el.onclick = () => { STATE.proc = el.dataset.proc; mountProcesses(); renderProcDetail(); });
-  bindFlowHover();
-
-  // funnel
-  let cum = 100;
-  $q("#funnel").innerHTML = DB.PROCESSES.map(pr => {
-    const fpy = DB.PROCESS_KPI[pr.id][stage].fpy;
-    cum = cum * (fpy/100);
-    return `<div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
-        <b>${pr.ico} ${pr.name}</b>
-        <span class="mono">FPY ${fpy.toFixed(1)}% → roll-up ${cum.toFixed(1)}%</span>
-      </div>
-      <div class="bar"><i class="${fpy>=pr.target.fpy?"g":"w"}" style="width:${((fpy-80)/20*100).toFixed(0)}%"></i></div>
-    </div>`;
-  }).join("");
-
-  // matrix
-  const cell = v => {
-    const cls = v>=96.5?"good":v>=94?"warn":"bad";
-    return `<td><span class="pill ${cls}">${v.toFixed(1)}</span></td>`;
-  };
-  $q("#procMatrix").innerHTML = `<table>
-    <thead><tr><th>Process</th>${DB.STAGES.map(s=>`<th>${s}</th>`).join("")}</tr></thead>
-    <tbody>
-      ${DB.PROCESSES.map(pr => `<tr data-proc="${pr.id}">
-        <td><b>${pr.ico} ${pr.name}</b></td>
-        ${DB.STAGES.map(st => cell(DB.PROCESS_KPI[pr.id][st].fpy)).join("")}
-      </tr>`).join("")}
-    </tbody>
-  </table>`;
-
-  renderProcDetail();
-}
-
-function renderProcDetail(){
-  if (!STATE.proc) return;
-  const pr = DB.PROCESSES.find(x=>x.id===STATE.proc);
+/* Process detail lives in a modal now, so the Overview flow can open it
+   directly instead of routing through a dedicated page. */
+function openProcModal(pid){
+  const pr = DB.PROCESSES.find(x=>x.id===pid);
+  if (!pr) return;
   const stage = STATE.stage === "ALL" ? "DVT" : STATE.stage;
   const k = DB.PROCESS_KPI[pr.id][stage];
-  $q("#procDetailTitle").innerHTML = `${pr.ico} ${pr.name} — <span class="pill acc">${stage}</span>`;
-  $q("#procDetail").className = "";
-  $q("#procDetail").innerHTML = `
-    <div class="modal-grid">
+  const seedOff = pr.id.length;
+  const base = DB.KPI_SERIES.fpy.slice(-14);
+  const series = base.map((v,i)=>+(v - 1.2 + ((i*seedOff)%5)*0.18).toFixed(2));
+  const linked = DB.FACA.filter(f=>f.process===pr.id);
+
+  openModal(`
+    <h2>${pr.ico} ${esc(pr.name)}</h2>
+    <div class="modal-grid" style="margin-top:12px">
       <div class="stat-box"><span>FPY</span><b>${k.fpy.toFixed(1)}%</b></div>
       <div class="stat-box"><span>UPH</span><b>${k.uph}</b></div>
       <div class="stat-box"><span>OEE</span><b>${k.oee.toFixed(1)}%</b></div>
       <div class="stat-box"><span>Target FPY</span><b>${pr.target.fpy}%</b></div>
     </div>
-    <div class="bar" style="margin-bottom:14px"><i class="${k.fpy>=pr.target.fpy?"g":"w"}" style="width:${((k.fpy-80)/20*100).toFixed(0)}%"></i></div>
+    <div class="bar" style="margin:10px 0 14px"><i class="${k.fpy>=pr.target.fpy?"g":"w"}" style="width:${((k.fpy-80)/20*100).toFixed(0)}%"></i></div>
     <div id="procTrend"></div>
     <div class="sec-head"><h2>Linked FACA actions</h2><div class="rule"></div></div>
-    ${(DB.FACA.filter(f=>f.process===pr.id).map(f=>`
+    ${(linked.map(f=>`
       <div class="item"><div class="item-ico" style="background:var(--pur-soft);color:var(--pur)">${f.ico}</div>
       <div class="item-body"><div class="item-title">${f.id} · ${esc(f.title)}</div>
       <div class="item-sub">${f.product} · ${f.owner} · due ${f.due}</div></div>
       <div class="item-meta"><span class="pill ${f.status==="Overdue"?"bad":f.status==="In Review"?"acc":"warn"}">${f.status}</span></div></div>`).join(""))
-      || `<div class="empty">No open FACA for this process</div>`}`;
+      || `<div class="empty">No open FACA for this process</div>`}`);
 
-  const seedOff = pr.id.length;
-  const base = DB.KPI_SERIES.fpy.slice(-(14));
-  const series = base.map((v,i)=>+(v - 1.2 + ((i*seedOff)%5)*0.18).toFixed(2));
   CHARTS.lineChart($q("#procTrend"), { data: series, labels: labelsFor(series, series.length), fmt: v=>v.toFixed(1)+"%", target: pr.target.fpy });
 }
 
@@ -3573,7 +3516,6 @@ function setView(v){
 
   const renderers = {
     overview:  [viewOverview,  mountOverview],
-    processes: [viewProcesses, mountProcesses],
     quality:   [viewQuality,   mountQuality],
     gantt:     [viewGantt,     mountGantt],
     faca:      [viewFaca,      mountFaca],
